@@ -6,6 +6,7 @@ import android.view.View
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -35,36 +36,67 @@ class AlbumsFragment : Fragment(R.layout.fragment_albums) {
     private lateinit var adapter: AlbumAdapter
     private lateinit var search: SearchController
     private lateinit var empty: TextView
+    private lateinit var heading: TextView
     private var query = ""
+    private var current: List<Album> = emptyList()
 
     private val backCb = object : OnBackPressedCallback(false) {
-        override fun handleOnBackPressed() { search.close(); isEnabled = false }
+        override fun handleOnBackPressed() {
+            if (adapter.editing) exitEdit() else if (search.active) search.close()
+            syncBack()
+        }
     }
 
+    private fun syncBack() { backCb.isEnabled = adapter.editing || search.active }
+    private fun toast(s: String) = Toast.makeText(requireContext(), s, Toast.LENGTH_SHORT).show()
+
     override fun onViewCreated(v: View, s: Bundle?) {
-        v.findViewById<TextView>(R.id.heading).useDisplay()
+        heading = v.findViewById(R.id.heading); heading.useDisplay()
         empty = v.findViewById(R.id.empty); empty.useDisplay()
+        val btnAdd = v.findViewById<ImageView>(R.id.btnAdd)
         val btnSearch = v.findViewById<ImageView>(R.id.btnSearch)
         val btnMore = v.findViewById<ImageView>(R.id.btnMore)
         val spacer = v.findViewById<View>(R.id.spacer)
         val input = v.findViewById<EditText>(R.id.searchInput)
 
-        search = SearchController(input, listOf(spacer, btnMore), btnSearch) { query = it; refresh() }
+        search = SearchController(input, listOf(spacer, btnAdd, btnMore), btnSearch) { query = it; refresh() }
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, backCb)
 
+        adapter = AlbumAdapter(
+            onClick = { a ->
+                val mode = if (a.id < 0) "calbum" else "album"
+                startActivity(GridActivity.intent(requireContext(), mode, a.id.toString(), a.name))
+            },
+            onSelectChanged = { updateHeading() }
+        )
+
+        btnAdd.setOnClickListener {
+            askName(requireContext(), "New album", "") { n ->
+                // naam dewar por photo select korar screen
+                startActivity(GridActivity.intent(requireContext(), "pick", "album", n))
+            }
+        }
         btnSearch.setOnClickListener {
-            if (search.active) { search.close(); backCb.isEnabled = false }
-            else { search.open(); backCb.isEnabled = true }
+            if (search.active) search.close() else search.open()
+            syncBack()
         }
         btnMore.setOnClickListener {
-            showDarkMenu(it, listOf("Sort", "Hide albums")) { i ->
-                if (i == 0) sortDialog() else HideAlbumsDialog.show(requireContext(), vm)
+            if (adapter.editing) {
+                showDarkMenu(it, listOf("Rename", "Delete", "Select all", "Done")) { i ->
+                    when (i) { 0 -> renameSel(); 1 -> deleteSel(); 2 -> selectAll(); 3 -> exitEdit() }
+                }
+            } else {
+                showDarkMenu(it, listOf("Edit", "Select all", "Sort", "Hide albums")) { i ->
+                    when (i) {
+                        0 -> enterEdit()
+                        1 -> { enterEdit(); selectAll() }
+                        2 -> sortDialog()
+                        3 -> HideAlbumsDialog.show(requireContext(), vm)
+                    }
+                }
             }
         }
 
-        adapter = AlbumAdapter { a ->
-            startActivity(GridActivity.intent(requireContext(), "album", a.id.toString(), a.name))
-        }
         v.findViewById<RecyclerView>(R.id.list).apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = this@AlbumsFragment.adapter
@@ -74,6 +106,52 @@ class AlbumsFragment : Fragment(R.layout.fragment_albums) {
         vm.loaded.observe(viewLifecycleOwner) { refresh() }
     }
 
+    // ---------- Edit mode ----------
+    private fun enterEdit() {
+        adapter.editing = true
+        adapter.selected.clear()
+        adapter.notifyDataSetChanged()
+        updateHeading(); syncBack()
+    }
+
+    private fun exitEdit() {
+        adapter.editing = false
+        adapter.selected.clear()
+        adapter.notifyDataSetChanged()
+        updateHeading(); syncBack()
+    }
+
+    private fun selectAll() {
+        adapter.selected.addAll(current.map { it.id })
+        adapter.notifyDataSetChanged()
+        updateHeading()
+    }
+
+    private fun updateHeading() {
+        heading.text = if (adapter.editing) "${adapter.selected.size} selected" else "My albums"
+    }
+
+    private fun renameSel() {
+        val id = adapter.selected.singleOrNull()
+        if (id == null || id >= 0) { toast("Select one album you created to rename"); return }
+        val old = current.firstOrNull { it.id == id }?.name ?: ""
+        askName(requireContext(), "Rename album", old) { n ->
+            CustomAlbums.rename(id, n); exitEdit(); vm.publish()
+        }
+    }
+
+    private fun deleteSel() {
+        val ids = adapter.selected.filter { it < 0 }
+        if (ids.isEmpty()) { toast("Only albums you created can be deleted here"); return }
+        MaterialAlertDialogBuilder(requireContext())
+            .setMessage("Delete ${ids.size} album(s)? Photos will NOT be deleted.")
+            .setPositiveButton("Delete") { _, _ ->
+                ids.forEach { CustomAlbums.delete(it) }
+                exitEdit(); vm.publish()
+            }.setNegativeButton("Cancel", null).show()
+    }
+
+    // ---------- List ----------
     private fun refresh() {
         if (!::adapter.isInitialized) return
         var l = vm.albums()
@@ -83,6 +161,7 @@ class AlbumsFragment : Fragment(R.layout.fragment_albums) {
             2 -> l.sortedByDescending { it.count }
             else -> l.sortedByDescending { it.latest }
         }
+        current = l
         adapter.submitList(l)
         empty.visibility = if (l.isEmpty() && vm.loaded.value == true) View.VISIBLE else View.GONE
         empty.text = if (query.isNotBlank()) "No results" else "No albums"
@@ -97,6 +176,10 @@ class AlbumsFragment : Fragment(R.layout.fragment_albums) {
 
     override fun onHiddenChanged(hidden: Boolean) {
         super.onHiddenChanged(hidden)
-        if (hidden && ::search.isInitialized) { search.close(); backCb.isEnabled = false }
+        if (hidden && ::search.isInitialized) {
+            search.close()
+            if (adapter.editing) exitEdit()
+            syncBack()
+        }
     }
 }

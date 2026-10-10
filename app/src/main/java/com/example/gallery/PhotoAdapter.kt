@@ -47,6 +47,13 @@ class PhotoAdapter(
         }
     }
 
+    /** payload thakle shudhu select UI update hoy (image abar load hoy na, drag-select smooth thake) */
+    override fun onBindViewHolder(h: RecyclerView.ViewHolder, position: Int, payloads: MutableList<Any>) {
+        if (payloads.isEmpty()) { onBindViewHolder(h, position); return }
+        val r = getItem(position)
+        if (h is PhotoVH && r is Row.Photo) h.bindSelection(r)
+    }
+
     override fun onViewRecycled(h: RecyclerView.ViewHolder) {
         if (h is PhotoVH) Glide.with(h.img).clear(h.img)
     }
@@ -60,6 +67,8 @@ class PhotoAdapter(
         val img: ImageView = v.findViewById(R.id.img)
         private val check: ImageView = v.findViewById(R.id.check)
         private val fav: ImageView = v.findViewById(R.id.fav)
+        private val vid: View = v.findViewById(R.id.vid)
+        private val dur: TextView = v.findViewById(R.id.dur)
 
         init {
             v.setOnClickListener {
@@ -76,6 +85,14 @@ class PhotoAdapter(
         fun bind(r: Row.Photo) {
             Glide.with(img).load(r.m.uri).override(400).centerCrop()
                 .placeholder(ColorDrawable(0xFF161616.toInt())).into(img)
+            if (r.m.video) {
+                vid.visibility = View.VISIBLE
+                dur.text = fmtDuration(r.m.duration)
+            } else vid.visibility = View.GONE
+            bindSelection(r)
+        }
+
+        fun bindSelection(r: Row.Photo) {
             val sel = r.m.id in selected
             check.visibility = if (sel) View.VISIBLE else View.GONE
             val s = if (sel) .86f else 1f

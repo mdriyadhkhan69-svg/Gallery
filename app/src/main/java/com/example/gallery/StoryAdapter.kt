@@ -14,7 +14,8 @@ import com.bumptech.glide.Glide
 
 class StoryAdapter(
     private val onClick: (Story) -> Unit,
-    private val onHeartChanged: () -> Unit
+    private val onHeartChanged: () -> Unit,
+    private val onLong: (Story) -> Unit
 ) : ListAdapter<Story, StoryAdapter.VH>(object : DiffUtil.ItemCallback<Story>() {
     override fun areItemsTheSame(a: Story, b: Story) = a.key == b.key
     override fun areContentsTheSame(a: Story, b: Story) = a == b
@@ -38,6 +39,11 @@ class StoryAdapter(
                     badge.visibility = View.GONE
                     onClick(s)
                 }
+            }
+            v.setOnLongClickListener {
+                val p = bindingAdapterPosition
+                if (p != RecyclerView.NO_POSITION) onLong(getItem(p))
+                true
             }
             heart.setOnClickListener {
                 val p = bindingAdapterPosition

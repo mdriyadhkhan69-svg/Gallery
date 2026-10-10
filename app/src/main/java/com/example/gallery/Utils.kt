@@ -104,8 +104,17 @@ object Share {
         if (uris.isEmpty()) return
         val i = if (uris.size == 1) Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_STREAM, uris[0])
         else Intent(Intent.ACTION_SEND_MULTIPLE).putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
-        i.type = "image/*"
+        i.type = "*/*"
         i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         c.startActivity(Intent.createChooser(i, "Share"))
     }
+}
+
+fun fmtDuration(ms: Long): String {
+    val s = ms / 1000
+    val h = s / 3600
+    val m = (s % 3600) / 60
+    val sec = s % 60
+    return if (h > 0) String.format(Locale.US, "%d:%02d:%02d", h, m, sec)
+    else String.format(Locale.US, "%d:%02d", m, sec)
 }

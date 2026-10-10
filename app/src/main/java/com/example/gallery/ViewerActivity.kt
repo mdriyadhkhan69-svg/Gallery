@@ -7,9 +7,13 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.format.Formatter
 import android.view.View
+import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.result.IntentSenderRequest
@@ -36,8 +40,20 @@ class ViewerActivity : AppCompatActivity() {
     private lateinit var bottom: View
     private lateinit var nameView: TextView
     private lateinit var heart: ImageView
+    private lateinit var btnPlay: ImageView
     private var barsVisible = true
     private var pending: List<Uri> = emptyList()
+
+    private val handler = Handler(Looper.getMainLooper())
+    private var playing = false
+    private val tick = object : Runnable {
+        override fun run() {
+            if (!playing || items.isEmpty()) return
+            pager.setCurrentItem((pager.currentItem + 1) % items.size, true)
+            handler.removeCallbacks(this)
+            handler.postDelayed(this, 3000)
+        }
+    }
 
     private val deleteLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { r ->
         if (r.resultCode == Activity.RESULT_OK) {
@@ -57,6 +73,7 @@ class ViewerActivity : AppCompatActivity() {
         top = findViewById(R.id.topBar); bottom = findViewById(R.id.bottomBar)
         nameView = findViewById(R.id.name); nameView.useDisplay()
         heart = findViewById(R.id.btnFav)
+        btnPlay = findViewById(R.id.btnPlay)
         pager = findViewById(R.id.pager)
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.root)) { _, ins ->
@@ -66,12 +83,15 @@ class ViewerActivity : AppCompatActivity() {
             WindowInsetsCompat.CONSUMED
         }
 
-        adapter = ViewerAdapter(items) { toggleBars() }
+        adapter = ViewerAdapter(items, { toggleBars() }, { m -> startActivity(VideoActivity.intent(this, m.uri)) })
         pager.adapter = adapter
         pager.offscreenPageLimit = 1
         pager.setCurrentItem(intent.getIntExtra("index", 0).coerceIn(0, items.size - 1), false)
         pager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
-            override fun onPageSelected(position: Int) { updateUi() }
+            override fun onPageSelected(position: Int) {
+                updateUi()
+                if (playing) { handler.removeCallbacks(tick); handler.postDelayed(tick, 3000) }
+            }
         })
 
         findViewById<View>(R.id.btnBack).setOnClickListener { finish() }
@@ -79,7 +99,33 @@ class ViewerActivity : AppCompatActivity() {
         findViewById<View>(R.id.btnFav).setOnClickListener { toggleFav() }
         findViewById<View>(R.id.btnInfo).setOnClickListener { showDetails() }
         findViewById<View>(R.id.btnDelete).setOnClickListener { confirmDelete() }
+        btnPlay.setOnClickListener { setPlaying(!playing) }
         updateUi()
+        if (intent.getBooleanExtra("slideshow", false)) setPlaying(true)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (::btnPlay.isInitialized) setPlaying(false)
+    }
+
+    override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
+        super.onDestroy()
+    }
+
+    private fun setPlaying(on: Boolean) {
+        playing = on
+        handler.removeCallbacks(tick)
+        btnPlay.setImageResource(if (on) R.drawable.ic_pause else R.drawable.ic_play)
+        btnPlay.contentDescription = if (on) "Pause slideshow" else "Play slideshow"
+        if (on) {
+            handler.postDelayed(tick, 3000)
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            if (barsVisible) toggleBars()
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
     }
 
     private fun cur() = items[pager.currentItem]
@@ -139,24 +185,34 @@ class ViewerActivity : AppCompatActivity() {
     }
 
     companion object {
-        fun intent(c: Context, index: Int) = Intent(c, ViewerActivity::class.java).putExtra("index", index)
+        fun intent(c: Context, index: Int, slideshow: Boolean = false) =
+            Intent(c, ViewerActivity::class.java).putExtra("index", index).putExtra("slideshow", slideshow)
     }
 }
 
-class ViewerAdapter(private val items: List<Media>, private val onTap: () -> Unit) :
-    RecyclerView.Adapter<ViewerAdapter.VH>() {
+class ViewerAdapter(
+    private val items: List<Media>,
+    private val onTap: () -> Unit,
+    private val onPlay: (Media) -> Unit
+) : RecyclerView.Adapter<ViewerAdapter.VH>() {
 
-    class VH(val pv: PhotoView) : RecyclerView.ViewHolder(pv)
+    class VH(v: View) : RecyclerView.ViewHolder(v) {
+        val pv: PhotoView = v.findViewById(R.id.pv)
+        val play: ImageView = v.findViewById(R.id.play)
+    }
 
     override fun onCreateViewHolder(p: ViewGroup, t: Int): VH {
-        val pv = PhotoView(p.context)
-        pv.layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-        pv.maximumScale = 6f
-        return VH(pv)
+        val v = LayoutInflater.from(p.context).inflate(R.layout.item_page, p, false)
+        val h = VH(v)
+        h.pv.maximumScale = 6f
+        return h
     }
 
     override fun onBindViewHolder(h: VH, i: Int) {
-        Glide.with(h.pv).load(items[i].uri).override(2400, 2400).into(h.pv)
+        val m = items[i]
+        Glide.with(h.pv).load(m.uri).override(2400, 2400).into(h.pv)
+        h.play.visibility = if (m.video) View.VISIBLE else View.GONE
+        h.play.setOnClickListener { onPlay(m) }
         h.pv.setOnPhotoTapListener { _, _, _ -> onTap() }
         h.pv.setOnOutsidePhotoTapListener { onTap() }
     }

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:padding="1dp">
@@ -8,6 +9,7 @@
         android:id="@+id/img"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:contentDescription="Photo"
         android:scaleType="centerCrop" />
 
     <ImageView
@@ -16,9 +18,10 @@
         android:layout_height="26dp"
         android:layout_gravity="top|start"
         android:layout_margin="6dp"
+        android:contentDescription="Selected"
         android:src="@drawable/ic_select"
-        android:tint="@color/blue"
-        android:visibility="gone" />
+        android:visibility="gone"
+        app:tint="@color/blue" />
 
     <ImageView
         android:id="@+id/fav"
@@ -26,7 +29,36 @@
         android:layout_height="14dp"
         android:layout_gravity="bottom|start"
         android:layout_margin="6dp"
+        android:contentDescription="Favourite"
         android:src="@drawable/ic_favorite"
-        android:tint="@color/white"
-        android:visibility="gone" />
+        android:visibility="gone"
+        app:tint="@color/white" />
+
+    <LinearLayout
+        android:id="@+id/vid"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="6dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:contentDescription="Video"
+            android:src="@drawable/ic_play"
+            app:tint="@color/white" />
+
+        <TextView
+            android:id="@+id/dur"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="2dp"
+            android:shadowColor="#000000"
+            android:shadowRadius="4"
+            android:textColor="@color/white"
+            android:textSize="11sp" />
+    </LinearLayout>
 </FrameLayout>

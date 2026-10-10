@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -28,7 +29,7 @@
             android:contentDescription="Back"
             android:padding="16dp"
             android:src="@drawable/ic_arrow_back"
-            android:tint="@color/white" />
+            app:tint="@color/white" />
 
         <TextView
             android:id="@+id/name"
@@ -59,7 +60,7 @@
             android:contentDescription="Share"
             android:padding="16dp"
             android:src="@drawable/ic_share"
-            android:tint="@color/white" />
+            app:tint="@color/white" />
 
         <ImageView
             android:id="@+id/btnFav"
@@ -72,6 +73,17 @@
             android:src="@drawable/ic_favorite_border" />
 
         <ImageView
+            android:id="@+id/btnPlay"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Play slideshow"
+            android:padding="16dp"
+            android:src="@drawable/ic_play"
+            app:tint="@color/white" />
+
+        <ImageView
             android:id="@+id/btnInfo"
             android:layout_width="0dp"
             android:layout_height="56dp"
@@ -80,7 +92,7 @@
             android:contentDescription="Details"
             android:padding="16dp"
             android:src="@drawable/ic_info"
-            android:tint="@color/white" />
+            app:tint="@color/white" />
 
         <ImageView
             android:id="@+id/btnDelete"
@@ -91,6 +103,6 @@
             android:contentDescription="Delete"
             android:padding="16dp"
             android:src="@drawable/ic_delete"
-            android:tint="@color/white" />
+            app:tint="@color/white" />
     </LinearLayout>
 </FrameLayout>

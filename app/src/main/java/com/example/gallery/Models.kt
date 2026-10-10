@@ -4,7 +4,8 @@ import android.net.Uri
 
 data class Media(
     val id: Long, val uri: Uri, val name: String, val date: Long,
-    val bucketId: Long, val bucket: String, val size: Long, val w: Int, val h: Int
+    val bucketId: Long, val bucket: String, val size: Long, val w: Int, val h: Int,
+    val video: Boolean = false, val duration: Long = 0L
 )
 
 data class Album(val id: Long, val name: String, val count: Int, val cover: Uri, val latest: Long)

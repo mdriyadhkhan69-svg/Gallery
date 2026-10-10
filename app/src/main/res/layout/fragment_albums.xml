@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg"
@@ -24,6 +25,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:autofillHints="none"
             android:background="@null"
             android:hint="Search albums"
             android:inputType="text"
@@ -34,6 +36,16 @@
             android:visibility="gone" />
 
         <ImageView
+            android:id="@+id/btnAdd"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Create album"
+            android:padding="12dp"
+            android:src="@drawable/ic_add"
+            app:tint="@color/white" />
+
+        <ImageView
             android:id="@+id/btnSearch"
             android:layout_width="48dp"
             android:layout_height="48dp"
@@ -41,7 +53,7 @@
             android:contentDescription="Search"
             android:padding="12dp"
             android:src="@drawable/ic_search"
-            android:tint="@color/white" />
+            app:tint="@color/white" />
 
         <ImageView
             android:id="@+id/btnMore"
@@ -51,7 +63,7 @@
             android:contentDescription="More options"
             android:padding="12dp"
             android:src="@drawable/ic_more"
-            android:tint="@color/white" />
+            app:tint="@color/white" />
     </LinearLayout>
 
     <TextView

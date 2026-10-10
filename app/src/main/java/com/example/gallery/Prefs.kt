@@ -39,4 +39,7 @@ object Prefs {
     }
 
     fun add(k: String, v: String) { setSet(k, getSet(k) + v) }
+
+    fun getStr(k: String, d: String = ""): String = sp.getString(k, d) ?: d
+    fun putStr(k: String, v: String) = sp.edit().putString(k, v).apply()
 }

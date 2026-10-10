@@ -14,6 +14,8 @@ import android.view.ViewOutlineProvider
 import android.view.animation.DecelerateInterpolator
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import android.widget.FrameLayout
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
@@ -70,7 +72,23 @@ fun showDarkMenu(anchor: View, items: List<String>, onClick: (Int) -> Unit) {
         box.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(170).setInterpolator(DecelerateInterpolator()).start()
     }
 }
-
+/** Naam lekhar dialog (album / story create & rename) */
+fun askName(ctx: Context, title: String, initial: String, onOk: (String) -> Unit) {
+    val et = EditText(ctx)
+    et.setSingleLine()
+    et.setText(initial)
+    et.setSelection(et.text.length)
+    val pad = (20 * ctx.resources.displayMetrics.density).toInt()
+    val box = FrameLayout(ctx)
+    box.setPadding(pad, pad / 2, pad, 0)
+    box.addView(et)
+    MaterialAlertDialogBuilder(ctx).setTitle(title).setView(box)
+        .setPositiveButton("OK") { _, _ ->
+            val n = et.text.toString().trim()
+            if (n.isNotEmpty()) onOk(n)
+        }
+        .setNegativeButton("Cancel", null).show()
+}
 /** Top bar er search open/close handle kore */
 class SearchController(
     private val input: EditText,

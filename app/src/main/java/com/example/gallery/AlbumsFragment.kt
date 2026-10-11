@@ -64,7 +64,7 @@ class AlbumsFragment : Fragment(R.layout.fragment_albums) {
 
         adapter = AlbumAdapter(
             onClick = { a ->
-                val mode = if (a.id < 0) "calbum" else "album"
+                val mode = if (isCustomId(a.id)) "calbum" else "album"
                 startActivity(GridActivity.intent(requireContext(), mode, a.id.toString(), a.name))
             },
             onSelectChanged = { updateHeading() }
@@ -133,7 +133,7 @@ class AlbumsFragment : Fragment(R.layout.fragment_albums) {
 
     private fun renameSel() {
         val id = adapter.selected.singleOrNull()
-        if (id == null || id >= 0) { toast("Select one album you created to rename"); return }
+        if (id == null || !isCustomId(id)) { toast("Select one album you created to rename"); return }
         val old = current.firstOrNull { it.id == id }?.name ?: ""
         askName(requireContext(), "Rename album", old) { n ->
             CustomAlbums.rename(id, n); exitEdit(); vm.publish()
@@ -141,7 +141,7 @@ class AlbumsFragment : Fragment(R.layout.fragment_albums) {
     }
 
     private fun deleteSel() {
-        val ids = adapter.selected.filter { it < 0 }
+        val ids = adapter.selected.filter { isCustomId(it) }
         if (ids.isEmpty()) { toast("Only albums you created can be deleted here"); return }
         MaterialAlertDialogBuilder(requireContext())
             .setMessage("Delete ${ids.size} album(s)? Photos will NOT be deleted.")

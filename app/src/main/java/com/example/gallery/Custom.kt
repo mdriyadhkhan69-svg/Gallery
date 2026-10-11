@@ -9,6 +9,9 @@ class Coll(val id: Long, var name: String, val ids: MutableSet<Long>, var cover:
 /** MainActivity ke bole custom data change hoyeche, refresh dorkar */
 object Changes { @Volatile var dirty = false }
 
+/** Custom album id hocche -currentTimeMillis (Int range er baire). Device bucket id Int range er moddhe, negative-o hote pare. */
+fun isCustomId(id: Long): Boolean = id < Int.MIN_VALUE.toLong()
+
 class CollStore(private val key: String) {
 
     fun all(): MutableList<Coll> {

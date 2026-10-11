@@ -97,11 +97,11 @@ class AlbumsFragment : Fragment(R.layout.fragment_albums) {
             }
         }
 
-        v.findViewById<RecyclerView>(R.id.list).apply {
-            layoutManager = LinearLayoutManager(requireContext())
-            adapter = this@AlbumsFragment.adapter
-            itemAnimator = null
-        }
+        val albumList = v.findViewById<RecyclerView>(R.id.list)
+        albumList.layoutManager = LinearLayoutManager(requireContext())
+        albumList.adapter = adapter
+        albumList.itemAnimator = null
+        ScrollAssist.attach(albumList, v.findViewById(R.id.fastScroll), v.findViewById(R.id.btnTop))
         vm.all.observe(viewLifecycleOwner) { refresh() }
         vm.loaded.observe(viewLifecycleOwner) { refresh() }
     }

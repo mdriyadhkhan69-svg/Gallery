@@ -51,6 +51,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     private var dragX = 0f
     private var dragY = -1f
     private var dragBase: Set<Long> = emptySet()
+    private var dragAdd = true
 
     /** all | album | calbum | ustory | month | fav | recent | video | pick */
     private val mode get() = arguments?.getString("mode") ?: "all"
@@ -112,6 +113,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         grid.setItemViewCacheSize(20)
         setupPinch()
         setupDragSelect()
+        ScrollAssist.attach(grid, v.findViewById(R.id.fastScroll), v.findViewById(R.id.btnTop))
 
         back.setOnClickListener {
             if (mode == "pick") requireActivity().finish()
@@ -201,12 +203,10 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         val c = n.coerceIn(2, 7)
         if (c == lm.spanCount) return
         val first = lm.findFirstVisibleItemPosition().coerceAtLeast(0)
-        lm.spanCount = c
+        val off = lm.findViewByPosition(first)?.top ?: 0
         Prefs.columns = c
-        lm.scrollToPositionWithOffset(first, 0)
-        grid.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-        grid.alpha = 0.55f
-        grid.animate().alpha(1f).setDuration(180).start()
+        lm.spanCount = c
+        lm.scrollToPositionWithOffset(first, off)
     }
 
     // ---------- Drag to select ----------
@@ -258,6 +258,8 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         dragLo = pos; dragHi = pos
         dragY = -1f
         dragBase = HashSet(adapter.selected)
+        val aid = (adapter.currentList.getOrNull(pos) as? Row.Photo)?.m?.id
+        dragAdd = aid == null || aid !in dragBase
         applyRange(pos)
         grid.postOnAnimation(autoScroll)
     }
@@ -283,7 +285,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         val hi = maxOf(dragAnchor, pos)
         val ids = HashSet(dragBase)
         val list = adapter.currentList
-        for (p in lo..hi) (list.getOrNull(p) as? Row.Photo)?.let { ids.add(it.m.id) }
+        for (p in lo..hi) (list.getOrNull(p) as? Row.Photo)?.let { if (dragAdd) ids.add(it.m.id) else ids.remove(it.m.id) }
         adapter.selected.clear()
         adapter.selected.addAll(ids)
         val from = minOf(lo, dragLo)
@@ -508,6 +510,6 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     override fun onResume() {
         super.onResume()
         if (!::adapter.isInitialized) return
-        if (mode == "fav") rebuild() else adapter.notifyItemRangeChanged(0, adapter.itemCount)
+        if (mode == "fav") rebuild() else adapter.notifyItemRangeChanged(0, adapter.itemCount, "sel")
     }
 }

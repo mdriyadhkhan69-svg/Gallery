@@ -69,6 +69,7 @@ class PhotoAdapter(
         private val fav: ImageView = v.findViewById(R.id.fav)
         private val vid: View = v.findViewById(R.id.vid)
         private val dur: TextView = v.findViewById(R.id.dur)
+        private val selBox: View = v.findViewById(R.id.selBox)
 
         init {
             v.setOnClickListener {
@@ -95,8 +96,7 @@ class PhotoAdapter(
         fun bindSelection(r: Row.Photo) {
             val sel = r.m.id in selected
             check.visibility = if (sel) View.VISIBLE else View.GONE
-            val s = if (sel) .86f else 1f
-            img.scaleX = s; img.scaleY = s
+            selBox.visibility = if (sel) View.VISIBLE else View.GONE
             fav.visibility = if (Prefs.has("fav", "p${r.m.id}")) View.VISIBLE else View.GONE
         }
     }

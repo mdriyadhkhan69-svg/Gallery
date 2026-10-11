@@ -85,7 +85,7 @@ object Deleter {
     /** IntentSender return korle user confirmation lagbe (launch korte hobe). null hole direct delete hoyeche. */
     fun delete(ctx: Context, uris: List<Uri>): IntentSender? {
         val cr = ctx.contentResolver
-        if (Build.VERSION.SDK_INT >= 30) return MediaStore.createDeleteRequest(cr, uris).intentSender
+        if (Build.VERSION.SDK_INT >= 30) return MediaStore.createTrashRequest(cr, uris, true).intentSender
         for (u in uris) {
             try {
                 cr.delete(u, null, null)

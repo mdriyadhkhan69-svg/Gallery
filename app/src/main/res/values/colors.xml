@@ -5,4 +5,5 @@
     <color name="gray">#8A8A8A</color>
     <color name="blue">#3D8BFF</color>
     <color name="surface">#262626</color>
+    <color name="accent">#FFD60A</color>
 </resources>

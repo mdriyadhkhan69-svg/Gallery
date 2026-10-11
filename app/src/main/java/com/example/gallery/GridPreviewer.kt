@@ -68,7 +68,7 @@ class GridPreviewer(private val rv: RecyclerView, private val adapter: PhotoAdap
 
     init {
         tv.surfaceTextureListener = this
-        tv.alpha = 0f
+        tv.alpha = 0.01f
         rv.addOnScrollListener(scrollL)
         rv.addOnChildAttachStateChangeListener(childL)
         adapter.registerAdapterDataObserver(dataL)
@@ -125,7 +125,11 @@ class GridPreviewer(private val rv: RecyclerView, private val adapter: PhotoAdap
     private fun next() {
         if (!canRun()) return
         val list = eligible()
-        if (list.isEmpty()) { stop(); return }
+        if (list.isEmpty()) {
+            stopPlayback()
+            if (adapter.currentList.any { (it as? Row.Photo)?.m?.video == true }) schedule(800)
+            return
+        }
         val cand = list.firstOrNull { it.pos > lastPos } ?: list.first()
         if (cand.id == curId && started && host === cand.view) replay() else play(cand)
     }
@@ -136,7 +140,7 @@ class GridPreviewer(private val rv: RecyclerView, private val adapter: PhotoAdap
         lastPos = c.pos
         pendingUri = c.uri
         host = c.view
-        tv.alpha = 0f
+        tv.alpha = 0.01f
         c.view.addView(tv, 1, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
     }
 

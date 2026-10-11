@@ -27,7 +27,7 @@
                 android:paddingEnd="16dp"
                 android:text="Revert"
                 android:textColor="#555555"
-                android:textSize="18sp" />
+                android:textSize="14sp" />
 
             <TextView
                 android:id="@+id/btnSave"
@@ -39,7 +39,7 @@
                 android:paddingEnd="16dp"
                 android:text="Save"
                 android:textColor="#555555"
-                android:textSize="18sp" />
+                android:textSize="14sp" />
         </LinearLayout>
 
         <com.example.gallery.EditorView
@@ -146,6 +146,8 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp"
                         android:scrollbars="none">
 
                         <LinearLayout
@@ -225,7 +227,7 @@
                     android:paddingEnd="28dp"
                     android:text="Add text"
                     android:textColor="@color/white"
-                    android:textSize="15sp" />
+                    android:textSize="14sp" />
 
                 <LinearLayout
                     android:id="@+id/itemActions"
@@ -482,7 +484,7 @@
                 android:gravity="center"
                 android:text="Draw"
                 android:textColor="@color/white"
-                android:textSize="15sp" />
+                android:textSize="14sp" />
 
             <TextView
                 android:id="@+id/catSticker"
@@ -492,7 +494,7 @@
                 android:gravity="center"
                 android:text="Stickers"
                 android:textColor="@color/white"
-                android:textSize="15sp" />
+                android:textSize="14sp" />
 
             <TextView
                 android:id="@+id/catText"
@@ -502,7 +504,7 @@
                 android:gravity="center"
                 android:text="Text"
                 android:textColor="@color/white"
-                android:textSize="15sp" />
+                android:textSize="14sp" />
         </LinearLayout>
 
         <LinearLayout

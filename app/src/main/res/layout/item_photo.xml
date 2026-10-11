@@ -21,14 +21,13 @@
 
     <ImageView
         android:id="@+id/check"
-        android:layout_width="26dp"
-        android:layout_height="26dp"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
         android:layout_gravity="top|start"
         android:layout_margin="6dp"
         android:contentDescription="Selected"
-        android:src="@drawable/ic_select"
-        android:visibility="gone"
-        app:tint="@color/blue" />
+        android:src="@drawable/ic_circle"
+        android:visibility="gone" />
 
     <ImageView
         android:id="@+id/fav"

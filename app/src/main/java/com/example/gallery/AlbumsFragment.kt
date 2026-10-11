@@ -1,6 +1,7 @@
 package com.example.gallery
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.EditText
@@ -16,17 +17,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 object HideAlbumsDialog {
     fun show(ctx: Context, vm: GalleryViewModel) {
-        val albums = vm.rawAlbums()
-        val hidden = Prefs.getSet("hidden")
-        val names = albums.map { "${it.name} (${it.count})" }.toTypedArray()
-        val checked = albums.map { it.id.toString() in hidden }.toBooleanArray()
-        MaterialAlertDialogBuilder(ctx).setTitle("Hide albums")
-            .setMultiChoiceItems(names, checked) { _, i, on -> checked[i] = on }
-            .setPositiveButton("Done") { _, _ ->
-                Prefs.setSet("hidden", albums.filterIndexed { i, _ -> checked[i] }.map { it.id.toString() }.toSet())
-                vm.publish()
-            }
-            .setNegativeButton("Cancel", null).show()
+        ctx.startActivity(Intent(ctx, HideAlbumsActivity::class.java))
     }
 }
 

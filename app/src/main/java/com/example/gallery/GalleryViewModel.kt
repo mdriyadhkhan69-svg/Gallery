@@ -112,7 +112,7 @@ class GalleryViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun albumsOf(list: List<Media>): List<Album> =
-        list.groupBy { it.bucketId }.map { (id, l) -> Album(id, l[0].bucket, l.size, l[0].uri, l[0].date) }
+        list.groupBy { it.bucketId }.map { (id, l) -> Album(id, l[0].bucket, l.size, l[0].uri, l[0].date, l.count { it.video }) }
 
     /** Device album + app-managed (custom) album. Custom album er id negative. */
     fun albums(): List<Album> {
@@ -121,7 +121,7 @@ class GalleryViewModel(app: Application) : AndroidViewModel(app) {
             val m = list.filter { it.id in c.ids }
             val cover = m.firstOrNull { it.id == c.cover } ?: m.firstOrNull()
             if (cover == null) Album(c.id, c.name, 0, Uri.EMPTY, 0L)
-            else Album(c.id, c.name, m.size, cover.uri, m.first().date)
+            else Album(c.id, c.name, m.size, cover.uri, m.first().date, m.count { it.video })
         }
         return albumsOf(list) + custom
     }

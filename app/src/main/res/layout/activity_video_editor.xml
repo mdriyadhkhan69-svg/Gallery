@@ -28,7 +28,7 @@
                 android:paddingEnd="16dp"
                 android:text="Revert"
                 android:textColor="#555555"
-                android:textSize="18sp" />
+                android:textSize="14sp" />
 
             <TextView
                 android:id="@+id/btnSave"
@@ -40,7 +40,7 @@
                 android:paddingEnd="16dp"
                 android:text="Save as copy"
                 android:textColor="#555555"
-                android:textSize="18sp" />
+                android:textSize="14sp" />
         </LinearLayout>
 
         <FrameLayout
@@ -149,7 +149,7 @@
             android:layout_height="wrap_content"
             android:text="Saving…"
             android:textColor="@color/white"
-            android:textSize="18sp" />
+            android:textSize="14sp" />
 
         <ProgressBar
             android:id="@+id/savingBar"
@@ -171,6 +171,6 @@
             android:paddingEnd="28dp"
             android:text="Cancel"
             android:textColor="@color/white"
-            android:textSize="15sp" />
+            android:textSize="14sp" />
     </LinearLayout>
 </FrameLayout>

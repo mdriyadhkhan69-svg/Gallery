@@ -153,7 +153,7 @@ class ViewerActivity : AppCompatActivity() {
         film.layoutManager = filmLm
         film.adapter = filmAdapter
         film.itemAnimator = null
-        val side = (resources.displayMetrics.widthPixels - dp(52f)) / 2
+        val side = (resources.displayMetrics.widthPixels - dp(40f)) / 2
         film.setPadding(side, 0, side, 0)
         LinearSnapHelper().attachToRecyclerView(film)
         film.addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -384,10 +384,7 @@ class ViewerActivity : AppCompatActivity() {
         handler.postDelayed({ centerOn(pager.currentItem, false, 0) }, 60)
     }
 
-    private fun onStageTap() {
-        if (cur().video && vplayer.isPlayingNow && barsVisible) return
-        toggleBars()
-    }
+    private fun onStageTap() { toggleBars() }
 
     // ---------- Filmstrip ----------
     private fun goTo(p: Int) {
@@ -449,7 +446,8 @@ class ViewerActivity : AppCompatActivity() {
         nameView.text = m.name
         setHeart(Prefs.has("fav", "p${m.id}"))
         filmAdapter.select(pager.currentItem)
-        videoControls.visibility = if (m.video) View.VISIBLE else View.GONE
+        videoControls.visibility = if (m.video) (if (barsVisible) View.VISIBLE else View.INVISIBLE) else View.GONE
+        videoControls.alpha = if (barsVisible) 1f else 0f
         if (!m.video) collapse(false)
         if (m.video && m.id != loadedId) updateTime(0, m.duration.toInt())
     }
@@ -469,7 +467,8 @@ class ViewerActivity : AppCompatActivity() {
 
     private fun toggleBars() {
         barsVisible = !barsVisible
-        for (v in listOf(top, bottom)) {
+        for (v in listOf(top, bottom, videoControls)) {
+            if (v === videoControls && !cur().video) continue
             v.animate().cancel()
             if (barsVisible) { v.visibility = View.VISIBLE; v.animate().alpha(1f).setDuration(150).start() }
             else v.animate().alpha(0f).setDuration(150).withEndAction { v.visibility = View.INVISIBLE }.start()
@@ -529,9 +528,7 @@ class ViewerActivity : AppCompatActivity() {
             if (sender != null) deleteLauncher.launch(IntentSenderRequest.Builder(sender).build())
             else removeCurrent()
         }
-        if (Build.VERSION.SDK_INT >= 30) go()
-        else MaterialAlertDialogBuilder(this).setMessage("Delete this item?")
-            .setPositiveButton("Delete") { _, _ -> go() }.setNegativeButton("Cancel", null).show()
+        confirmTrash(this, 1) { go() }
     }
 
     private fun removeCurrent() {
@@ -660,7 +657,7 @@ class FilmAdapter(
         val m = items[i]
         val wide = i == wideIdx
         val lp = h.itemView.layoutParams
-        val w = ((if (wide) 190f else 52f) * d).toInt()
+        val w = ((if (wide) 150f else 40f) * d).toInt()
         if (lp.width != w) { lp.width = w; h.itemView.layoutParams = lp }
         h.thumb.visibility = if (wide) View.GONE else View.VISIBLE
         h.tl.visibility = if (wide) View.VISIBLE else View.GONE

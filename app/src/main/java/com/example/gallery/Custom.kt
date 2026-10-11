@@ -1,5 +1,6 @@
 package com.example.gallery
 
+import android.net.Uri
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -69,3 +70,19 @@ class CollStore(private val key: String) {
 
 val CustomAlbums = CollStore("calbums")
 val CustomStories = CollStore("cstories")
+
+
+/** edited image uri -> original image uri (original file is never overwritten; edits are saved as copies) */
+object OriginalStore {
+    private const val KEY = "origmap"
+    private fun load(): JSONObject = try { JSONObject(Prefs.getStr(KEY, "{}")) } catch (e: Exception) { JSONObject() }
+
+    fun get(edited: Uri): Uri? {
+        val s = load().optString(edited.toString(), "")
+        return if (s.isEmpty()) null else Uri.parse(s)
+    }
+
+    fun put(edited: Uri, original: Uri) {
+        Prefs.putStr(KEY, load().put(edited.toString(), original.toString()).toString())
+    }
+}

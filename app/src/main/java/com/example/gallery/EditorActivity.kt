@@ -228,20 +228,26 @@ class EditorActivity : AppCompatActivity() {
         }
 
         selectDrawTool(0)
-        selectTool(4)
+        selectTool(1)
         refreshBar()
 
-        // load image
+        loadSource(uri, true)
+    }
+
+    private fun loadSource(u: Uri, first: Boolean) {
         saving.visibility = View.VISIBLE
         Thread {
-            val bmp = try { Exporter.load(this, uri, 4096) } catch (e: Throwable) { null }
+            val bmp = try { Exporter.load(this, u, 4096) } catch (e: Throwable) { null }
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 saving.visibility = View.GONE
                 if (bmp == null) {
-                    Toast.makeText(this, "Can't open this image", Toast.LENGTH_SHORT).show()
-                    finish()
+                    Toast.makeText(this, if (first) "Can't open this image" else "Original image is missing", Toast.LENGTH_SHORT).show()
+                    if (first) finish()
                 } else {
+                    srcUri = u
+                    png = contentResolver.getType(u) == "image/png"
+                    if (!first) resetAll()
                     ed.setSource(bmp)
                     buildFilters(bmp)
                     refreshBar()
@@ -322,9 +328,10 @@ class EditorActivity : AppCompatActivity() {
 
     private fun refreshBar() {
         val on = hasChanges()
-        btnRevert.isEnabled = on
+        val canRestore = OriginalStore.get(srcUri) != null
+        btnRevert.isEnabled = on || canRestore
         btnSave.isEnabled = on
-        val col = if (on) Color.WHITE else 0xFF555555.toInt()
+        val col = if (on || canRestore) Color.WHITE else 0xFF555555.toInt()
         btnRevert.setTextColor(col)
         btnSave.setTextColor(if (on) accent else 0xFF555555.toInt())
         btnUndo.isEnabled = ed.canUndo(); btnUndo.alpha = if (ed.canUndo()) 1f else 0.35f
@@ -337,9 +344,16 @@ class EditorActivity : AppCompatActivity() {
     private fun applyFx() { ed.setFilter(Fx.build(filterIdx, adj)) }
 
     private fun revert() {
-        if (!hasChanges()) return
-        MaterialAlertDialogBuilder(this).setMessage("Revert all changes?")
-            .setPositiveButton("Revert") { _, _ -> resetAll() }
+        val orig = OriginalStore.get(srcUri)
+        if (orig == null) {
+            if (!hasChanges()) return
+            MaterialAlertDialogBuilder(this).setMessage("Revert all changes?")
+                .setPositiveButton("Revert") { _, _ -> resetAll() }
+                .setNegativeButton("Cancel", null).show()
+            return
+        }
+        MaterialAlertDialogBuilder(this).setMessage("Revert to the original image?")
+            .setPositiveButton("Revert") { _, _ -> loadSource(orig, false) }
             .setNegativeButton("Cancel", null).show()
     }
 
@@ -377,8 +391,8 @@ class EditorActivity : AppCompatActivity() {
 
     // ---------- Colors ----------
     private fun buildSwatches(row: LinearLayout, initial: Int, onPick: (Int) -> Unit) {
-        val size = dp(30)
-        val m = dp(5)
+        val size = dp(26)
+        val m = dp(4)
         palette.forEach { col ->
             val v = View(this)
             v.tag = col
@@ -399,7 +413,6 @@ class EditorActivity : AppCompatActivity() {
                 setColor(col)
                 setStroke(dp(if (on) 3 else 1), if (on) 0xFFFFFFFF.toInt() else 0x66FFFFFF)
             }
-            v.animate().scaleX(if (on) 1.15f else 1f).scaleY(if (on) 1.15f else 1f).setDuration(120).start()
         }
     }
 
@@ -590,6 +603,7 @@ class EditorActivity : AppCompatActivity() {
                 val bmp = ed.render(scale)
                 if (bmp != null) {
                     result = Exporter.save(this, bmp, png)
+                    result?.let { OriginalStore.put(it, OriginalStore.get(srcUri) ?: srcUri) }
                     bmp.recycle()
                 }
             } catch (e: Throwable) {

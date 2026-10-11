@@ -15,8 +15,8 @@ import kotlin.math.roundToInt
 class FastScrollView @JvmOverloads constructor(c: Context, a: AttributeSet? = null) : View(c, a) {
 
     private val d = resources.displayMetrics.density
-    private val hw = 26f * d
-    private val hh = 56f * d
+    private val hw = 14f * d
+    private val hh = 44f * d
     private val edgeGap = 2f * d
     private val blue = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF3D8BFF.toInt() }
     private val white = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() }
@@ -51,17 +51,15 @@ class FastScrollView @JvmOverloads constructor(c: Context, a: AttributeSet? = nu
 
     private fun lm(): LinearLayoutManager? = rv?.layoutManager as? LinearLayoutManager
 
-    private fun handleTop() = frac * (height - hh).coerceAtLeast(0f)
+    private fun trackTop() = height * 0.25f
+    private fun trackLen() = (height * 0.5f - hh).coerceAtLeast(1f)
+    private fun handleTop() = trackTop() + frac * trackLen()
 
     private fun sync() {
         val r = rv ?: return
-        val m = lm() ?: return
-        val n = r.adapter?.itemCount ?: return
-        val f = m.findFirstVisibleItemPosition()
-        val l = m.findLastVisibleItemPosition()
-        if (f < 0 || l < 0 || n == 0) return
-        val denom = (n - (l - f + 1)).coerceAtLeast(1)
-        frac = (f.toFloat() / denom).coerceIn(0f, 1f)
+        val range = r.computeVerticalScrollRange() - r.computeVerticalScrollExtent()
+        if (range <= 0) return
+        frac = (r.computeVerticalScrollOffset().toFloat() / range).coerceIn(0f, 1f)
         invalidate()
     }
 
@@ -84,14 +82,11 @@ class FastScrollView @JvmOverloads constructor(c: Context, a: AttributeSet? = nu
 
     private fun moveTo(y: Float) {
         val r = rv ?: return
-        val m = lm() ?: return
-        val n = r.adapter?.itemCount ?: return
-        if (n == 0) return
-        val range = (height - hh).coerceAtLeast(1f)
-        frac = (y / range).coerceIn(0f, 1f)
+        frac = ((y - trackTop()) / trackLen()).coerceIn(0f, 1f)
         invalidate()
-        val target = (frac * (n - vis).coerceAtLeast(0)).roundToInt().coerceIn(0, n - 1)
-        m.scrollToPositionWithOffset(target, 0)
+        val range = r.computeVerticalScrollRange() - r.computeVerticalScrollExtent()
+        if (range <= 0) return
+        r.scrollBy(0, (frac * range).toInt() - r.computeVerticalScrollOffset())
     }
 
     override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) {
@@ -142,9 +137,9 @@ class FastScrollView @JvmOverloads constructor(c: Context, a: AttributeSet? = nu
         c.drawRoundRect(box, hw / 2f, hw / 2f, blue)
         val cx = x + hw / 2f
         val cy = y + hh / 2f
-        val w = 5f * d
-        val g = 4f * d
-        val t = 7f * d
+        val w = 3f * d
+        val g = 2.5f * d
+        val t = 4.5f * d
         tri.reset()
         tri.moveTo(cx, cy - g - t); tri.lineTo(cx - w, cy - g); tri.lineTo(cx + w, cy - g); tri.close()
         tri.moveTo(cx, cy + g + t); tri.lineTo(cx - w, cy + g); tri.lineTo(cx + w, cy + g); tri.close()

@@ -8,7 +8,7 @@ data class Media(
     val video: Boolean = false, val duration: Long = 0L
 )
 
-data class Album(val id: Long, val name: String, val count: Int, val cover: Uri, val latest: Long)
+data class Album(val id: Long, val name: String, val count: Int, val cover: Uri, val latest: Long, val videos: Int = 0)
 
 data class Story(val key: String, val title: String, val range: String, val cover: Uri, val count: Int)
 

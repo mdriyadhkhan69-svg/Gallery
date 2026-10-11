@@ -95,8 +95,15 @@ class PhotoAdapter(
 
         fun bindSelection(r: Row.Photo) {
             val sel = r.m.id in selected
-            check.visibility = if (sel) View.VISIBLE else View.GONE
-            selBox.visibility = if (sel) View.VISIBLE else View.GONE
+            check.visibility = if (selecting) View.VISIBLE else View.GONE
+            selBox.visibility = View.GONE
+            if (sel) {
+                check.setImageResource(R.drawable.ic_check_filled)
+                check.clearColorFilter()
+            } else {
+                check.setImageResource(R.drawable.ic_circle)
+                check.setColorFilter(0xFFB0B0B0.toInt())
+            }
             fav.visibility = if (Prefs.has("fav", "p${r.m.id}")) View.VISIBLE else View.GONE
         }
     }

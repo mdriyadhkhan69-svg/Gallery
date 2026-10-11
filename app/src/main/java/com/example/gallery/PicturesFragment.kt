@@ -410,6 +410,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     private fun startSelect() {
         if (search.active) closeSearch()
         adapter.selecting = true
+        adapter.notifyItemRangeChanged(0, adapter.itemCount, "sel")
         updateBar()
     }
 
@@ -518,9 +519,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
             if (sender != null) deleteLauncher.launch(IntentSenderRequest.Builder(sender).build())
             else { exitSelection(); vm.load() }
         }
-        if (Build.VERSION.SDK_INT >= 30) go()
-        else MaterialAlertDialogBuilder(requireContext()).setMessage("Delete ${uris.size} item(s)?")
-            .setPositiveButton("Delete") { _, _ -> go() }.setNegativeButton("Cancel", null).show()
+        confirmTrash(requireContext(), uris.size) { go() }
     }
 
     // ---------- Dialogs ----------

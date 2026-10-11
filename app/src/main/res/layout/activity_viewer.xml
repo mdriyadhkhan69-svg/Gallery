@@ -34,7 +34,7 @@
             android:ellipsize="end"
             android:singleLine="true"
             android:textColor="@color/white"
-            android:textSize="16sp" />
+            android:textSize="14sp" />
 
         <ImageView
             android:id="@+id/btnPlay"
@@ -44,6 +44,7 @@
             android:contentDescription="Play slideshow"
             android:padding="16dp"
             android:src="@drawable/ic_play"
+            android:visibility="gone"
             app:tint="@color/white" />
     </LinearLayout>
 
@@ -70,6 +71,74 @@
                 android:layout_height="match_parent"
                 android:layout_gravity="center" />
         </FrameLayout>
+
+        <LinearLayout
+            android:id="@+id/videoControls"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:layout_gravity="bottom"
+            android:background="@drawable/bg_scrim"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/btnFull"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:contentDescription="Hide controls"
+                android:padding="10dp"
+                android:src="@drawable/ic_fullscreen"
+                android:visibility="invisible" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <LinearLayout
+                android:id="@+id/btnPill"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_pill_outline"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="20dp">
+
+                <ImageView
+                    android:id="@+id/btnToggle"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:contentDescription="Play"
+                    android:src="@drawable/ic_play" />
+
+                <TextView
+                    android:id="@+id/timeText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:text="00:00 / 00:00"
+                    android:textColor="@color/white"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <ImageView
+                android:id="@+id/btnMute"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_circle_outline"
+                android:contentDescription="Mute"
+                android:padding="10dp"
+                android:src="@drawable/ic_volume_on" />
+        </LinearLayout>
     </FrameLayout>
 
     <LinearLayout
@@ -80,76 +149,10 @@
         android:clipChildren="false"
         android:orientation="vertical">
 
-        <LinearLayout
-            android:id="@+id/videoControls"
-            android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:visibility="gone">
-
-            <ImageView
-                android:id="@+id/btnFull"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:background="@drawable/bg_circle_outline"
-                android:contentDescription="Hide controls"
-                android:padding="11dp"
-                android:src="@drawable/ic_fullscreen" />
-
-            <View
-                android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:layout_weight="1" />
-
-            <LinearLayout
-                android:id="@+id/btnPill"
-                android:layout_width="wrap_content"
-                android:layout_height="44dp"
-                android:background="@drawable/bg_pill_outline"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingStart="18dp"
-                android:paddingEnd="22dp">
-
-                <ImageView
-                    android:id="@+id/btnToggle"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:contentDescription="Play"
-                    android:src="@drawable/ic_play" />
-
-                <TextView
-                    android:id="@+id/timeText"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="14dp"
-                    android:text="00:00 / 00:00"
-                    android:textColor="@color/white"
-                    android:textSize="15sp" />
-            </LinearLayout>
-
-            <View
-                android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:layout_weight="1" />
-
-            <ImageView
-                android:id="@+id/btnMute"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:background="@drawable/bg_circle_outline"
-                android:contentDescription="Mute"
-                android:padding="11dp"
-                android:src="@drawable/ic_volume_on" />
-        </LinearLayout>
-
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/filmstrip"
             android:layout_width="match_parent"
-            android:layout_height="88dp"
+            android:layout_height="64dp"
             android:clipChildren="false"
             android:clipToPadding="false"
             android:overScrollMode="never" />

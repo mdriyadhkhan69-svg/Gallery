@@ -166,7 +166,7 @@ class MainActivity : AppCompatActivity() {
             Entry(R.drawable.ic_favorite_border, "Favourites") { startActivity(GridActivity.intent(this, "fav", "", "Favourites")) },
             Entry(R.drawable.ic_video, "Videos") { startActivity(GridActivity.intent(this, "video", "", "Videos")) },
             Entry(R.drawable.ic_history, "Recent") { startActivity(GridActivity.intent(this, "recent", "", "Recent")) },
-            Entry(R.drawable.ic_hidden, "Hide albums") { HideAlbumsDialog.show(this, vm) },
+            Entry(R.drawable.ic_delete, "Recycle Bin") { startActivity(Intent(this, TrashActivity::class.java)) },
             Entry(R.drawable.ic_settings, "Settings") { showSettings() },
             Entry(R.drawable.ic_info, "About") {
                 MaterialAlertDialogBuilder(this).setTitle("Gallery")
@@ -185,7 +185,7 @@ class MainActivity : AppCompatActivity() {
                     layoutParams = LinearLayout.LayoutParams((28 * dp).toInt(), (28 * dp).toInt())
                 })
                 addView(TextView(context).apply {
-                    text = e.label; setTextColor(Color.WHITE); textSize = 14f
+                    text = e.label; setTextColor(Color.WHITE); textSize = 12f
                     gravity = Gravity.CENTER; useDisplay()
                     setPadding(0, (8 * dp).toInt(), 0, 0)
                 })

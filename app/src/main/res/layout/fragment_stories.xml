@@ -30,7 +30,7 @@
             android:singleLine="true"
             android:textColor="@color/white"
             android:textColorHint="@color/gray"
-            android:textSize="18sp"
+            android:textSize="14sp"
             android:visibility="gone" />
 
         <ImageView
@@ -71,7 +71,7 @@
         android:padding="16dp"
         android:text="Explore your stories"
         android:textColor="@color/white"
-        android:textSize="28sp" />
+        android:textSize="20sp" />
 
     <FrameLayout
         android:layout_width="match_parent"
@@ -91,7 +91,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:textColor="@color/gray"
-            android:textSize="18sp"
+            android:textSize="14sp"
             android:visibility="gone" />
     </FrameLayout>
 </LinearLayout>

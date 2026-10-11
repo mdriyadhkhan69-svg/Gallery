@@ -57,8 +57,8 @@ fun showDarkMenu(anchor: View, items: List<String>, onClick: (Int) -> Unit) {
     pw.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
     items.forEachIndexed { i, label ->
         box.addView(TextView(ctx).apply {
-            text = label; textSize = 18f; setTextColor(Color.WHITE); useDisplay()
-            minWidth = (190 * d).toInt()
+            text = label; textSize = 15f; setTextColor(Color.WHITE); useDisplay()
+            minWidth = (170 * d).toInt()
             setPadding((24 * d).toInt(), (16 * d).toInt(), (24 * d).toInt(), (16 * d).toInt())
             val tv = TypedValue()
             ctx.theme.resolveAttribute(android.R.attr.selectableItemBackground, tv, true)
@@ -72,6 +72,13 @@ fun showDarkMenu(anchor: View, items: List<String>, onClick: (Int) -> Unit) {
         box.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(170).setInterpolator(DecelerateInterpolator()).start()
     }
 }
+fun confirmTrash(ctx: Context, count: Int, onYes: () -> Unit) {
+    val msg = if (count == 1) "Move this item to the Recycle Bin?" else "Move $count items to the Recycle Bin?"
+    MaterialAlertDialogBuilder(ctx).setMessage(msg)
+        .setPositiveButton(if (android.os.Build.VERSION.SDK_INT >= 30) "Move to Recycle Bin" else "Delete") { _, _ -> onYes() }
+        .setNegativeButton("Cancel", null).show()
+}
+
 /** Naam lekhar dialog (album / story create & rename) */
 fun askName(ctx: Context, title: String, initial: String, onOk: (String) -> Unit) {
     val et = EditText(ctx)

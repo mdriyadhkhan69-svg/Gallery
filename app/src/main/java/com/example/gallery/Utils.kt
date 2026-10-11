@@ -110,6 +110,15 @@ object Share {
     }
 }
 
+fun countLabel(total: Int, videos: Int): String {
+    val nf = java.text.NumberFormat.getInstance()
+    val p = total - videos
+    val parts = ArrayList<String>()
+    if (p > 0) parts.add("${nf.format(p)} ${if (p == 1) "photo" else "photos"}")
+    if (videos > 0) parts.add("${nf.format(videos)} ${if (videos == 1) "video" else "videos"}")
+    return if (parts.isEmpty()) "0" else parts.joinToString(", ")
+}
+
 fun fmtDuration(ms: Long): String {
     val s = ms / 1000
     val h = s / 3600

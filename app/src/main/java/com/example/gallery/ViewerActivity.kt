@@ -12,7 +12,6 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
 import android.text.format.Formatter
-import android.util.DisplayMetrics
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -21,6 +20,7 @@ import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -28,7 +28,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.LinearSnapHelper
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
@@ -55,6 +54,26 @@ class ViewerActivity : AppCompatActivity() {
     private lateinit var btnPlay: ImageView
     private lateinit var btnEdit: ImageView
     private lateinit var btnMore: ImageView
+
+    // video
+    private lateinit var videoHost: View
+    private lateinit var vplayer: VideoPlayerView
+    private lateinit var videoControls: View
+    private lateinit var btnToggle: ImageView
+    private lateinit var btnMute: ImageView
+    private lateinit var timeText: TextView
+    private lateinit var timelinePanel: View
+    private lateinit var expTimeline: TimelineView
+    private var loadedId = -1L
+    private var muted = false
+    private var vDuration = 0
+    private var scrubbing = false
+    private var resumeAfterScrub = false
+    private var expanded = false
+    private var rangeStart = 0
+    private var rangeEnd = 0
+    private var pagerState = ViewPager2.SCROLL_STATE_IDLE
+
     private var barsVisible = true
     private var pending: List<Uri> = emptyList()
     private var userFilm = false
@@ -102,6 +121,17 @@ class ViewerActivity : AppCompatActivity() {
         pager = findViewById(R.id.pager)
         film = findViewById(R.id.filmstrip)
 
+        videoHost = findViewById(R.id.videoHost)
+        vplayer = findViewById(R.id.video)
+        videoControls = findViewById(R.id.videoControls)
+        btnToggle = findViewById(R.id.btnToggle)
+        btnMute = findViewById(R.id.btnMute)
+        timeText = findViewById(R.id.timeText); timeText.useDisplay()
+        timelinePanel = findViewById(R.id.timelinePanel)
+        expTimeline = findViewById(R.id.expTimeline)
+        expTimeline.trimEnabled = true
+        expTimeline.interactive = true
+
         val topPad = dp(8f)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.root)) { v, ins ->
             val s = ins.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
@@ -113,7 +143,7 @@ class ViewerActivity : AppCompatActivity() {
 
         val start = (b?.getInt("i") ?: intent.getIntExtra("index", 0)).coerceIn(0, items.size - 1)
 
-        adapter = ViewerAdapter(items, { toggleBars() }, { m -> startActivity(VideoActivity.intent(this, m.uri)) })
+        adapter = ViewerAdapter(items) { onStageTap() }
         pager.adapter = adapter
         pager.offscreenPageLimit = 1
         pager.setCurrentItem(start, false)
@@ -128,10 +158,15 @@ class ViewerActivity : AppCompatActivity() {
         LinearSnapHelper().attachToRecyclerView(film)
         film.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrollStateChanged(rv: RecyclerView, state: Int) {
-                if (state == RecyclerView.SCROLL_STATE_DRAGGING) userFilm = true
-                else if (state == RecyclerView.SCROLL_STATE_IDLE && userFilm) {
+                if (state == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    userFilm = true
+                    filmAdapter.frozen = true
+                } else if (state == RecyclerView.SCROLL_STATE_IDLE && userFilm) {
                     syncFromFilm()
                     userFilm = false
+                    filmAdapter.unfreeze()
+                    handler.postDelayed({ centerOn(pager.currentItem, true, 0) }, 60)
+                    syncVideo()
                 }
             }
             override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) { if (userFilm) syncFromFilm() }
@@ -144,26 +179,74 @@ class ViewerActivity : AppCompatActivity() {
                 val prev = shownPos
                 shownPos = position
                 updateUi()
+                if (cur().id != loadedId) holdVideo()
                 if (!userFilm) {
                     if (prev < 0 || abs(position - prev) > 8) filmLm.scrollToPositionWithOffset(position, 0)
-                    else smoothCenter(position)
+                    handler.postDelayed({ centerOn(position, prev >= 0 && abs(position - prev) <= 8, 0) }, 60)
                 }
                 if (playing) { handler.removeCallbacks(tick); handler.postDelayed(tick, 3000) }
+                handler.postDelayed({ syncVideo() }, 90)
+            }
+
+            override fun onPageScrollStateChanged(state: Int) {
+                pagerState = state
+                if (state != ViewPager2.SCROLL_STATE_IDLE) holdVideo() else syncVideo()
             }
         })
 
         findViewById<View>(R.id.btnBack).setOnClickListener { finish() }
         findViewById<View>(R.id.btnShare).setOnClickListener { Share.send(this, listOf(cur().uri)) }
         findViewById<View>(R.id.btnFav).setOnClickListener { toggleFav() }
-        findViewById<View>(R.id.btnEdit).setOnClickListener {
-            if (cur().video) Toast.makeText(this, "Videos can't be edited", Toast.LENGTH_SHORT).show()
-            else editLauncher.launch(EditorActivity.intent(this, cur().uri))
+        btnEdit.setOnClickListener {
+            val m = cur()
+            if (m.video) {
+                vplayer.pause()
+                editLauncher.launch(VideoEditorActivity.intent(this, m.uri, rangeStart, rangeEnd))
+            } else editLauncher.launch(EditorActivity.intent(this, m.uri))
         }
         findViewById<View>(R.id.btnDelete).setOnClickListener { confirmDelete() }
         btnMore.setOnClickListener { showMore() }
         btnPlay.setOnClickListener { setPlaying(!playing) }
+
+        // video controls
+        findViewById<View>(R.id.btnPill).setOnClickListener { togglePlay() }
+        btnMute.setOnClickListener {
+            muted = !muted
+            vplayer.muted = muted
+            updateMuteUi()
+        }
+        findViewById<View>(R.id.btnFull).setOnClickListener { toggleBars() }
+        findViewById<View>(R.id.btnCollapse).setOnClickListener { collapse(true) }
+        expTimeline.onSeek = { ms, fin -> scrub(ms, fin) }
+        expTimeline.onTrim = { s, e, which, fin ->
+            rangeStart = s
+            rangeEnd = e
+            vplayer.setRange(s, e)
+            scrub(if (which == 0) s else e, fin)
+        }
+        vplayer.onPrepared = { d ->
+            if (cur().id == loadedId) {
+                vDuration = d
+                if (pagerState == ViewPager2.SCROLL_STATE_IDLE) videoHost.visibility = View.VISIBLE
+                updateTime(vplayer.position(), d)
+                updatePlayUi()
+            }
+        }
+        vplayer.onState = { updatePlayUi() }
+        vplayer.onTick = { pos -> onVideoTick(pos) }
+        vplayer.onError = { Toast.makeText(this, "Can't play this video", Toast.LENGTH_SHORT).show() }
+        updateMuteUi()
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (expanded) collapse(true)
+                else { isEnabled = false; onBackPressedDispatcher.onBackPressed() }
+            }
+        })
+
         updateUi()
         if (intent.getBooleanExtra("slideshow", false)) setPlaying(true)
+        handler.postDelayed({ centerOn(start, false, 0); syncVideo() }, 120)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -174,15 +257,140 @@ class ViewerActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         if (::btnPlay.isInitialized) setPlaying(false)
+        if (::vplayer.isInitialized) { vplayer.pause(); updatePlayUi() }
     }
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        if (::vplayer.isInitialized) vplayer.release()
         super.onDestroy()
+    }
+
+    // ---------- Video ----------
+    private fun durationNow(): Int = if (vDuration > 0) vDuration else cur().duration.toInt()
+
+    private fun holdVideo() {
+        if (loadedId != -1L) {
+            vplayer.pause()
+            videoHost.visibility = View.INVISIBLE
+        }
+    }
+
+    private fun syncVideo() {
+        if (userFilm || pagerState != ViewPager2.SCROLL_STATE_IDLE || items.isEmpty()) return
+        val m = cur()
+        if (!m.video) { stopVideo(); return }
+        if (loadedId == m.id) { videoHost.visibility = View.VISIBLE; return }
+        loadVideo(m)
+    }
+
+    private fun loadVideo(m: Media) {
+        loadedId = m.id
+        collapse(false)
+        rangeStart = 0
+        rangeEnd = 0
+        scrubbing = false
+        vDuration = m.duration.toInt()
+        videoHost.visibility = View.INVISIBLE
+        vplayer.muted = muted
+        vplayer.load(m.uri, !playing)
+        updateTime(0, vDuration)
+        updatePlayUi()
+    }
+
+    private fun stopVideo() {
+        loadedId = -1L
+        vDuration = 0
+        vplayer.release()
+        videoHost.visibility = View.GONE
+        updatePlayUi()
+    }
+
+    private fun togglePlay() {
+        if (cur().id != loadedId) return
+        if (playing) setPlaying(false)
+        if (vplayer.isPlayingNow) vplayer.pause() else vplayer.play()
+        updatePlayUi()
+    }
+
+    private fun updatePlayUi() {
+        val p = vplayer.isPlayingNow
+        btnToggle.setImageResource(if (p) R.drawable.ic_pause else R.drawable.ic_play)
+        btnToggle.contentDescription = if (p) "Pause" else "Play"
+    }
+
+    private fun updateMuteUi() {
+        btnMute.setImageResource(if (muted) R.drawable.ic_volume_off else R.drawable.ic_volume_on)
+        btnMute.contentDescription = if (muted) "Unmute" else "Mute"
+    }
+
+    private fun updateTime(pos: Int, total: Int) {
+        val s = "${fmtClock(pos)} / ${fmtClock(total)}"
+        if (timeText.text.toString() != s) timeText.text = s
+    }
+
+    private fun onVideoTick(pos: Int) {
+        if (cur().id != loadedId) return
+        if (!scrubbing) updateTime(pos, durationNow())
+        expTimeline.setPosition(pos)
+        if (filmAdapter.wideIdx >= 0) {
+            (film.findViewHolderForAdapterPosition(filmAdapter.wideIdx) as? FilmAdapter.VH)?.tl?.setPosition(pos)
+        }
+    }
+
+    private fun scrub(ms: Int, fin: Boolean) {
+        if (!scrubbing) {
+            scrubbing = true
+            resumeAfterScrub = vplayer.isPlayingNow
+            vplayer.pause()
+            updatePlayUi()
+        }
+        vplayer.seek(ms, fin)
+        updateTime(ms, durationNow())
+        if (fin) {
+            scrubbing = false
+            if (resumeAfterScrub) vplayer.play()
+            updatePlayUi()
+        }
+    }
+
+    private fun expand() {
+        if (expanded || !cur().video || cur().id != loadedId) return
+        expanded = true
+        val d = durationNow()
+        expTimeline.setSource(cur().uri, d)
+        expTimeline.setRange(rangeStart, if (rangeEnd > 0) rangeEnd else d)
+        expTimeline.setPosition(vplayer.position())
+        film.animate().cancel()
+        timelinePanel.animate().cancel()
+        timelinePanel.alpha = 0f
+        timelinePanel.visibility = View.VISIBLE
+        timelinePanel.animate().alpha(1f).setDuration(180).start()
+        film.visibility = View.GONE
+    }
+
+    private fun collapse(animate: Boolean) {
+        if (!expanded) return
+        expanded = false
+        film.animate().cancel()
+        timelinePanel.animate().cancel()
+        timelinePanel.visibility = View.GONE
+        film.visibility = View.VISIBLE
+        if (animate) {
+            film.alpha = 0f
+            film.animate().alpha(1f).setDuration(180).start()
+        } else film.alpha = 1f
+        handler.postDelayed({ centerOn(pager.currentItem, false, 0) }, 60)
+    }
+
+    private fun onStageTap() {
+        if (cur().video && vplayer.isPlayingNow && barsVisible) return
+        toggleBars()
     }
 
     // ---------- Filmstrip ----------
     private fun goTo(p: Int) {
+        if (p == pager.currentItem) { if (cur().video) expand(); return }
         pager.setCurrentItem(p, abs(p - pager.currentItem) <= 3)
     }
 
@@ -204,13 +412,18 @@ class ViewerActivity : AppCompatActivity() {
         if (c >= 0 && c != pager.currentItem) pager.setCurrentItem(c, false)
     }
 
-    private fun smoothCenter(p: Int) {
-        val s = object : LinearSmoothScroller(this) {
-            override fun calculateDtToFit(vs: Int, ve: Int, bs: Int, be: Int, snap: Int) = (bs + be) / 2 - (vs + ve) / 2
-            override fun calculateSpeedPerPixel(m: DisplayMetrics) = 120f / m.densityDpi
+    private fun centerOn(p: Int, smooth: Boolean, tries: Int) {
+        if (userFilm || p !in 0 until items.size) return
+        val c = filmLm.findViewByPosition(p)
+        if (c == null) {
+            if (tries > 3) return
+            filmLm.scrollToPositionWithOffset(p, 0)
+            film.post { centerOn(p, false, tries + 1) }
+            return
         }
-        s.targetPosition = p
-        filmLm.startSmoothScroll(s)
+        val dx = (c.left + c.right) / 2 - film.width / 2
+        if (dx == 0) return
+        if (smooth) film.smoothScrollBy(dx, 0, DecelerateInterpolator()) else film.scrollBy(dx, 0)
     }
 
     // ---------- Slideshow ----------
@@ -231,10 +444,13 @@ class ViewerActivity : AppCompatActivity() {
     private fun cur() = items[pager.currentItem]
 
     private fun updateUi() {
-        nameView.text = cur().name
-        setHeart(Prefs.has("fav", "p${cur().id}"))
+        val m = cur()
+        nameView.text = m.name
+        setHeart(Prefs.has("fav", "p${m.id}"))
         filmAdapter.select(pager.currentItem)
-        btnEdit.alpha = if (cur().video) 0.35f else 1f
+        videoControls.visibility = if (m.video) View.VISIBLE else View.GONE
+        if (!m.video) collapse(false)
+        if (m.video && m.id != loadedId) updateTime(0, m.duration.toInt())
     }
 
     private fun setHeart(on: Boolean) {
@@ -253,6 +469,7 @@ class ViewerActivity : AppCompatActivity() {
     private fun toggleBars() {
         barsVisible = !barsVisible
         for (v in listOf(top, bottom)) {
+            v.animate().cancel()
             if (barsVisible) { v.visibility = View.VISIBLE; v.animate().alpha(1f).setDuration(150).start() }
             else v.animate().alpha(0f).setDuration(150).withEndAction { v.visibility = View.INVISIBLE }.start()
         }
@@ -295,8 +512,9 @@ class ViewerActivity : AppCompatActivity() {
     private fun showDetails() {
         val m = cur()
         val date = SimpleDateFormat("EEE, d MMM yyyy, h:mm a", Locale.getDefault()).format(Date(m.date))
+        val extra = if (m.video) "\nDuration: ${fmtDuration(m.duration)}" else ""
         MaterialAlertDialogBuilder(this).setTitle("Details")
-            .setMessage("Name: ${m.name}\nDate: $date\nResolution: ${m.w} × ${m.h}\nSize: ${Formatter.formatShortFileSize(this, m.size)}\nAlbum: ${m.bucket}")
+            .setMessage("Name: ${m.name}\nDate: $date\nResolution: ${m.w} × ${m.h}$extra\nSize: ${Formatter.formatShortFileSize(this, m.size)}\nAlbum: ${m.bucket}")
             .setPositiveButton("OK", null).show()
     }
 
@@ -305,25 +523,33 @@ class ViewerActivity : AppCompatActivity() {
         val uris = listOf(cur().uri)
         pending = uris
         val go = {
+            vplayer.pause()
             val sender = Deleter.delete(this, uris)
             if (sender != null) deleteLauncher.launch(IntentSenderRequest.Builder(sender).build())
             else removeCurrent()
         }
         if (Build.VERSION.SDK_INT >= 30) go()
-        else MaterialAlertDialogBuilder(this).setMessage("Delete this photo?")
+        else MaterialAlertDialogBuilder(this).setMessage("Delete this item?")
             .setPositiveButton("Delete") { _, _ -> go() }.setNegativeButton("Cancel", null).show()
     }
 
     private fun removeCurrent() {
         val p = pager.currentItem
         items.removeAt(p)
-        filmAdapter.selected = -1
+        filmAdapter.reset()
+        loadedId = -1L
+        vplayer.release()
+        videoHost.visibility = View.GONE
         adapter.notifyItemRemoved(p)
         filmAdapter.notifyItemRemoved(p)
-        if (items.isEmpty()) finish() else updateUi()
+        if (items.isEmpty()) finish()
+        else {
+            updateUi()
+            handler.postDelayed({ syncVideo() }, 90)
+        }
     }
 
-    // ---------- Edited photo ----------
+    // ---------- Edited item ----------
     private fun insertEdited(u: Uri) {
         val m = queryMedia(u) ?: return
         val at = (pager.currentItem + 1).coerceAtMost(items.size)
@@ -334,21 +560,24 @@ class ViewerActivity : AppCompatActivity() {
     }
 
     private fun queryMedia(u: Uri): Media? {
-        val p = arrayOf(
+        val video = contentResolver.getType(u)?.startsWith("video") == true
+        val cols = arrayListOf(
             MediaStore.Images.Media._ID, MediaStore.Images.Media.DISPLAY_NAME,
             MediaStore.Images.Media.DATE_TAKEN, MediaStore.Images.Media.DATE_ADDED,
             MediaStore.Images.Media.BUCKET_ID, MediaStore.Images.Media.BUCKET_DISPLAY_NAME,
             MediaStore.Images.Media.SIZE, MediaStore.Images.Media.WIDTH, MediaStore.Images.Media.HEIGHT
         )
+        if (video) cols.add(MediaStore.Video.Media.DURATION)
         try {
-            contentResolver.query(u, p, null, null, null)?.use { c ->
+            contentResolver.query(u, cols.toTypedArray(), null, null, null)?.use { c ->
                 if (c.moveToFirst()) {
                     val taken = c.getLong(2)
                     return Media(
-                        c.getLong(0), u, c.getString(1) ?: "Image",
+                        c.getLong(0), u, c.getString(1) ?: (if (video) "Video" else "Image"),
                         if (taken > 0) taken else c.getLong(3) * 1000,
                         c.getLong(4), c.getString(5) ?: "Unknown",
-                        c.getLong(6), c.getInt(7), c.getInt(8)
+                        c.getLong(6), c.getInt(7), c.getInt(8),
+                        video, if (video) c.getLong(9) else 0L
                     )
                 }
             }
@@ -368,16 +597,39 @@ class FilmAdapter(
 ) : RecyclerView.Adapter<FilmAdapter.VH>() {
 
     var selected = -1
+    var wideIdx = -1
+        private set
+    var frozen = false
 
     class VH(v: View) : RecyclerView.ViewHolder(v) {
         val thumb: ImageView = v.findViewById(R.id.thumb)
         val ring: View = v.findViewById(R.id.ring)
+        val tl: TimelineView = v.findViewById(R.id.tl)
+    }
+
+    fun reset() { selected = -1; wideIdx = -1 }
+
+    private fun setWide(p: Int) {
+        val m = items.getOrNull(p)
+        val nw = if (m != null && m.video && m.duration > 0) p else -1
+        if (nw == wideIdx) return
+        val ow = wideIdx
+        wideIdx = nw
+        if (ow in 0 until itemCount) notifyItemChanged(ow, "sel")
+        if (nw in 0 until itemCount) notifyItemChanged(nw, "sel")
+    }
+
+    fun unfreeze() {
+        frozen = false
+        setWide(selected)
+        if (selected in 0 until itemCount) notifyItemChanged(selected, "sel")
     }
 
     fun select(p: Int) {
         val old = selected
         if (old == p) return
         selected = p
+        if (!frozen) setWide(p)
         if (old in 0 until itemCount) notifyItemChanged(old, "sel")
         if (p in 0 until itemCount) notifyItemChanged(p, "sel")
     }
@@ -395,15 +647,25 @@ class FilmAdapter(
     override fun onBindViewHolder(h: VH, i: Int) {
         Glide.with(h.thumb).load(items[i].uri).override(160).centerCrop()
             .placeholder(ColorDrawable(0xFF161616.toInt())).into(h.thumb)
-        applySel(h, i == selected, false)
+        applySel(h, i, false)
     }
 
     override fun onBindViewHolder(h: VH, i: Int, payloads: MutableList<Any>) {
-        if (payloads.isEmpty()) onBindViewHolder(h, i) else applySel(h, i == selected, true)
+        if (payloads.isEmpty()) onBindViewHolder(h, i) else applySel(h, i, true)
     }
 
-    private fun applySel(h: VH, on: Boolean, anim: Boolean) {
+    private fun applySel(h: VH, i: Int, anim: Boolean) {
         val d = h.itemView.resources.displayMetrics.density
+        val m = items[i]
+        val wide = i == wideIdx
+        val lp = h.itemView.layoutParams
+        val w = ((if (wide) 190f else 52f) * d).toInt()
+        if (lp.width != w) { lp.width = w; h.itemView.layoutParams = lp }
+        h.thumb.visibility = if (wide) View.GONE else View.VISIBLE
+        h.tl.visibility = if (wide) View.VISIBLE else View.GONE
+        if (wide) h.tl.setSource(m.uri, m.duration.toInt())
+
+        val on = i == selected && !wide
         val s = if (on) 1.15f else 1f
         val ty = if (on) -4f * d else 0f
         val a = if (on) 1f else 0f
@@ -427,27 +689,22 @@ class FilmAdapter(
 
 class ViewerAdapter(
     private val items: List<Media>,
-    private val onTap: () -> Unit,
-    private val onPlay: (Media) -> Unit
+    private val onTap: () -> Unit
 ) : RecyclerView.Adapter<ViewerAdapter.VH>() {
 
     class VH(v: View) : RecyclerView.ViewHolder(v) {
         val pv: PhotoView = v.findViewById(R.id.pv)
-        val play: ImageView = v.findViewById(R.id.play)
     }
 
     override fun onCreateViewHolder(p: ViewGroup, t: Int): VH {
         val v = LayoutInflater.from(p.context).inflate(R.layout.item_page, p, false)
-        val h = VH(v)
-        h.pv.maximumScale = 6f
-        return h
+        return VH(v)
     }
 
     override fun onBindViewHolder(h: VH, i: Int) {
         val m = items[i]
+        if (m.video) h.pv.setScaleLevels(1f, 1.001f, 1.002f) else h.pv.setScaleLevels(1f, 1.75f, 6f)
         Glide.with(h.pv).load(m.uri).override(2400, 2400).into(h.pv)
-        h.play.visibility = if (m.video) View.VISIBLE else View.GONE
-        h.play.setOnClickListener { onPlay(m) }
         h.pv.setOnPhotoTapListener { _, _, _ -> onTap() }
         h.pv.setOnOutsidePhotoTapListener { onTap() }
     }

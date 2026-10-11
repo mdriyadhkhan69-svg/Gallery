@@ -37,6 +37,11 @@
             android:name=".VideoActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:exported="false" />
+        <activity
+            android:name=".VideoEditorActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
     </application>
 
 </manifest>

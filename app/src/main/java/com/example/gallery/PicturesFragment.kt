@@ -41,6 +41,9 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     private var query = ""
     private var pendingDelete: List<Uri> = emptyList()
     private var barTitleState = ""
+    private lateinit var sub: TextView
+    private var subText = ""
+    private var previewer: GridPreviewer? = null
 
     // drag-select state
     private var dragging = false
@@ -91,6 +94,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     override fun onViewCreated(v: View, s: Bundle?) {
         barTitleState = if (isColl) (store.get(param.toLong())?.name ?: barTitle) else barTitle
         title = v.findViewById(R.id.title); title.useDisplay()
+        sub = v.findViewById(R.id.subtitle); sub.useDisplay()
         back = v.findViewById(R.id.back)
         btnSelect = v.findViewById(R.id.btnSelect)
         btnSearch = v.findViewById(R.id.btnSearch)
@@ -99,7 +103,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         grid = v.findViewById(R.id.grid)
         val input = v.findViewById<EditText>(R.id.searchInput)
 
-        search = SearchController(input, listOf(title, btnSelect, btnMore), btnSearch) { query = it; rebuild() }
+        search = SearchController(input, listOf<View>(v.findViewById(R.id.titleBox), btnSelect, btnMore), btnSearch) { query = it; rebuild() }
 
         adapter = PhotoAdapter({ r, p -> onTap(r, p) }, { r, p -> onLong(r, p) })
         lm = GridLayoutManager(requireContext(), Prefs.columns)
@@ -114,6 +118,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         setupPinch()
         setupDragSelect()
         ScrollAssist.attach(grid, v.findViewById(R.id.fastScroll), v.findViewById(R.id.btnTop))
+        if (mode != "all" && mode != "pick") previewer = GridPreviewer(grid, adapter)
 
         back.setOnClickListener {
             if (mode == "pick") requireActivity().finish()
@@ -170,6 +175,8 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     }
 
     override fun onDestroyView() {
+        previewer?.release()
+        previewer = null
         endDrag()
         super.onDestroyView()
     }
@@ -329,7 +336,10 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     private fun rebuild() {
         if (!::adapter.isInitialized) return
         val cids = collIds()
-        var l = (vm.all.value ?: emptyList()).filter { matchesMode(it, cids) }
+        val base = (vm.all.value ?: emptyList()).filter { matchesMode(it, cids) }
+        android.util.Log.d("GalleryDbg", "mode=$mode param=$param total=${vm.all.value?.size} matched=${base.size} loaded=${vm.loaded.value}")
+        subText = summary(base)
+        var l = base
         if (query.isNotBlank()) l = l.filter { it.name.contains(query.trim(), true) }
         l = when (Prefs.sort) {
             1 -> l.sortedBy { it.date }
@@ -341,6 +351,17 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         val show = l.isEmpty() && vm.loaded.value == true
         empty.visibility = if (show) View.VISIBLE else View.GONE
         empty.text = if (query.isNotBlank()) "No results" else "Nothing here"
+        updateBar()
+    }
+
+    private fun summary(l: List<Media>): String {
+        if (l.isEmpty()) return ""
+        val v = l.count { it.video }
+        val p = l.size - v
+        val parts = ArrayList<String>()
+        if (p > 0) parts.add("$p ${if (p == 1) "photo" else "photos"}")
+        if (v > 0) parts.add("$v ${if (v == 1) "video" else "videos"}")
+        return "${l.size} ${if (l.size == 1) "item" else "items"} · ${parts.joinToString(", ")}"
     }
 
     private fun buildRows(list: List<Media>, headers: Boolean): List<Row> {
@@ -360,6 +381,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     private fun onTap(r: Row.Photo, pos: Int) {
         if (adapter.selecting) toggle(r.m, pos)
         else {
+            previewer?.stop()
             Session.items = items
             val tv = grid.findViewHolderForAdapterPosition(pos)?.itemView
             val opts = if (tv != null) ActivityOptionsCompat.makeScaleUpAnimation(tv, 0, 0, tv.width, tv.height).toBundle() else null
@@ -422,6 +444,9 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
             btnSearch.setImageResource(R.drawable.ic_search); btnSearch.contentDescription = "Search"
         }
         backCb.isEnabled = sel || search.active
+        previewer?.setBlocked(sel)
+        sub.text = subText
+        sub.visibility = if (!sel && mode != "all" && subText.isNotEmpty()) View.VISIBLE else View.GONE
     }
 
     // ---------- Albums / Stories actions ----------
@@ -525,5 +550,11 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         super.onResume()
         if (!::adapter.isInitialized) return
         if (mode == "fav") rebuild() else adapter.notifyItemRangeChanged(0, adapter.itemCount, "sel")
+        previewer?.resume()
+    }
+
+    override fun onPause() {
+        previewer?.pause()
+        super.onPause()
     }
 }

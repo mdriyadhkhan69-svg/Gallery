@@ -24,7 +24,7 @@ class GalleryViewModel(app: Application) : AndroidViewModel(app) {
     val all: LiveData<List<Media>> = _all
     val loaded = MutableLiveData(false)
 
-    private var raw: List<Media> = emptyList()
+    private var raw: List<Media> = Library.snapshot
     private var storyCache: List<Story>? = null
     private var job: Job? = null
 
@@ -36,15 +36,20 @@ class GalleryViewModel(app: Application) : AndroidViewModel(app) {
         val cr = app.contentResolver
         cr.registerContentObserver(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true, observer)
         cr.registerContentObserver(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, true, observer)
+        if (raw.isNotEmpty()) { publish(); loaded.value = true }
     }
 
     fun load(delayMs: Long = 0) {
         job?.cancel()
         job = viewModelScope.launch {
             if (delayMs > 0) delay(delayMs)
-            raw = withContext(Dispatchers.IO) { query() }
-            publish()
-            loaded.value = true
+            val res = withContext(Dispatchers.IO) { query() }
+            if (res != null) {
+                raw = res
+                Library.snapshot = res
+                publish()
+                loaded.value = true
+            }
         }
     }
 
@@ -55,7 +60,7 @@ class GalleryViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Files table theke image + video ek query te. Files table e id unique, tai photo/video id er clash hoy na. */
-    private fun query(): List<Media> {
+    private fun query(): List<Media>? {
         val out = ArrayList<Media>()
         val files = MediaStore.Files.getContentUri("external")
         val imgBase = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
@@ -98,7 +103,10 @@ class GalleryViewModel(app: Application) : AndroidViewModel(app) {
                         )
                     }
                 }
-        } catch (e: Exception) { /* permission nai ba column problem */ }
+        } catch (e: Exception) {
+            android.util.Log.e("GalleryDbg", "query failed", e)
+            return null
+        }
         out.sortByDescending { it.date }
         return out
     }

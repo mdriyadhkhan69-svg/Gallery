@@ -19,3 +19,6 @@ sealed class Row {
 
 /** Viewer e list pass korar jonno (Intent e boro list pass kora jay na) */
 object Session { var items: List<Media> = emptyList() }
+
+/** Last successful media query result. Detail screen er new ViewModel eta diye sathe sathe data pay. */
+object Library { @Volatile var snapshot: List<Media> = emptyList() }

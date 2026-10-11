@@ -13,7 +13,8 @@ import com.bumptech.glide.Glide
 
 class PhotoAdapter(
     private val onTap: (Row.Photo, Int) -> Unit,
-    private val onLong: (Row.Photo, Int) -> Unit
+    private val onLong: (Row.Photo, Int) -> Unit,
+    private val onHeader: (Int) -> Unit
 ) : ListAdapter<Row, RecyclerView.ViewHolder>(Diff) {
 
     var selecting = false
@@ -34,6 +35,23 @@ class PhotoAdapter(
 
     override fun getItemViewType(position: Int) = if (getItem(position) is Row.Header) HEADER else PHOTO
 
+    fun sectionIds(pos: Int): List<Long> {
+        val out = ArrayList<Long>()
+        var i = pos + 1
+        while (i < itemCount) {
+            val r = getItem(i)
+            if (r is Row.Header) break
+            if (r is Row.Photo) out.add(r.m.id)
+            i++
+        }
+        return out
+    }
+
+    private fun sectionSelected(pos: Int): Boolean {
+        val ids = sectionIds(pos)
+        return ids.isNotEmpty() && ids.all { it in selected }
+    }
+
     override fun onCreateViewHolder(p: ViewGroup, t: Int): RecyclerView.ViewHolder {
         val inf = LayoutInflater.from(p.context)
         return if (t == HEADER) HeaderVH(inf.inflate(R.layout.item_header, p, false))
@@ -42,7 +60,11 @@ class PhotoAdapter(
 
     override fun onBindViewHolder(h: RecyclerView.ViewHolder, position: Int) {
         when (val r = getItem(position)) {
-            is Row.Header -> (h as HeaderVH).tv.text = r.title
+            is Row.Header -> {
+                val hv = h as HeaderVH
+                hv.tv.text = r.title
+                hv.bindSelection(position)
+            }
             is Row.Photo -> (h as PhotoVH).bind(r)
         }
     }
@@ -52,6 +74,7 @@ class PhotoAdapter(
         if (payloads.isEmpty()) { onBindViewHolder(h, position); return }
         val r = getItem(position)
         if (h is PhotoVH && r is Row.Photo) h.bindSelection(r)
+        else if (h is HeaderVH && r is Row.Header) h.bindSelection(position)
     }
 
     override fun onViewRecycled(h: RecyclerView.ViewHolder) {
@@ -59,8 +82,29 @@ class PhotoAdapter(
     }
 
     inner class HeaderVH(v: View) : RecyclerView.ViewHolder(v) {
-        val tv = v as TextView
-        init { tv.useDisplay() }
+        val tv: TextView = v.findViewById(R.id.hTitle)
+        private val check: ImageView = v.findViewById(R.id.hCheck)
+
+        init {
+            tv.useDisplay()
+            val click = View.OnClickListener {
+                val p = bindingAdapterPosition
+                if (p != RecyclerView.NO_POSITION && selecting) onHeader(p)
+            }
+            check.setOnClickListener(click)
+            v.setOnClickListener(click)
+        }
+
+        fun bindSelection(pos: Int) {
+            check.visibility = if (selecting) View.VISIBLE else View.GONE
+            if (sectionSelected(pos)) {
+                check.setImageResource(R.drawable.ic_check_filled)
+                check.clearColorFilter()
+            } else {
+                check.setImageResource(R.drawable.ic_circle)
+                check.setColorFilter(0xFFB0B0B0.toInt())
+            }
+        }
     }
 
     inner class PhotoVH(v: View) : RecyclerView.ViewHolder(v) {

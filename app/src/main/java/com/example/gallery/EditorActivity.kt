@@ -353,7 +353,13 @@ class EditorActivity : AppCompatActivity() {
             return
         }
         MaterialAlertDialogBuilder(this).setMessage("Revert to the original image?")
-            .setPositiveButton("Revert") { _, _ -> loadSource(orig, false) }
+            .setPositiveButton("Revert") { _, _ ->
+                val ok = try { contentResolver.openInputStream(orig)?.use { true } ?: false } catch (e: Exception) { false }
+                if (ok) {
+                    setResult(RESULT_OK, Intent().setData(orig))
+                    finish()
+                } else Toast.makeText(this, "Original image is missing", Toast.LENGTH_SHORT).show()
+            }
             .setNegativeButton("Cancel", null).show()
     }
 

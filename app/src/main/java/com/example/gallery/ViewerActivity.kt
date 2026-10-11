@@ -550,6 +550,8 @@ class ViewerActivity : AppCompatActivity() {
     // ---------- Edited item ----------
     private fun insertEdited(u: Uri) {
         val m = queryMedia(u) ?: return
+        val ex = items.indexOfFirst { it.id == m.id }
+        if (ex >= 0) { pager.setCurrentItem(ex, false); return }
         val at = (pager.currentItem + 1).coerceAtMost(items.size)
         items.add(at, m)
         adapter.notifyItemInserted(at)

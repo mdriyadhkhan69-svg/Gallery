@@ -184,8 +184,8 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
             override fun onScaleBegin(d: ScaleGestureDetector): Boolean { acc = 1f; return true }
             override fun onScale(d: ScaleGestureDetector): Boolean {
                 acc *= d.scaleFactor
-                if (acc > 1.28f) { setColumns(lm.spanCount - 1); acc = 1f }
-                else if (acc < 0.78f) { setColumns(lm.spanCount + 1); acc = 1f }
+                if (acc > 1.28f) { setColumns(lm.spanCount - 1, d.focusX, d.focusY); acc = 1f }
+                else if (acc < 0.78f) { setColumns(lm.spanCount + 1, d.focusX, d.focusY); acc = 1f }
                 return true
             }
         })
@@ -199,14 +199,28 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         })
     }
 
-    private fun setColumns(n: Int) {
+    private fun setColumns(n: Int, fx: Float = -1f, fy: Float = -1f) {
         val c = n.coerceIn(2, 7)
         if (c == lm.spanCount) return
-        val first = lm.findFirstVisibleItemPosition().coerceAtLeast(0)
-        val off = lm.findViewByPosition(first)?.top ?: 0
+        var pos = -1
+        var off = 0
+        if (fx >= 0f) {
+            val child = grid.findChildViewUnder(fx, fy)
+            if (child != null) {
+                val p = grid.getChildAdapterPosition(child)
+                if (p != RecyclerView.NO_POSITION && adapter.getItemViewType(p) == PhotoAdapter.PHOTO) {
+                    pos = p
+                    off = child.top
+                }
+            }
+        }
+        if (pos < 0) {
+            pos = lm.findFirstVisibleItemPosition().coerceAtLeast(0)
+            off = lm.findViewByPosition(pos)?.top ?: 0
+        }
         Prefs.columns = c
         lm.spanCount = c
-        lm.scrollToPositionWithOffset(first, off)
+        lm.scrollToPositionWithOffset(pos, off)
     }
 
     // ---------- Drag to select ----------

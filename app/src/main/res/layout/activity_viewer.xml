@@ -62,7 +62,7 @@
             android:id="@+id/videoHost"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:visibility="invisible">
+            android:alpha="0">
 
             <com.example.gallery.VideoPlayerView
                 android:id="@+id/video"

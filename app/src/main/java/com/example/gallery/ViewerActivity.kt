@@ -227,7 +227,8 @@ class ViewerActivity : AppCompatActivity() {
         vplayer.onPrepared = { d ->
             if (cur().id == loadedId) {
                 vDuration = d
-                if (pagerState == ViewPager2.SCROLL_STATE_IDLE) videoHost.visibility = View.VISIBLE
+                if (pagerState == ViewPager2.SCROLL_STATE_IDLE) videoHost.alpha = 1f
+
                 updateTime(vplayer.position(), d)
                 updatePlayUi()
             }
@@ -272,7 +273,7 @@ class ViewerActivity : AppCompatActivity() {
     private fun holdVideo() {
         if (loadedId != -1L) {
             vplayer.pause()
-            videoHost.visibility = View.INVISIBLE
+            videoHost.alpha = 0f
         }
     }
 
@@ -280,7 +281,7 @@ class ViewerActivity : AppCompatActivity() {
         if (userFilm || pagerState != ViewPager2.SCROLL_STATE_IDLE || items.isEmpty()) return
         val m = cur()
         if (!m.video) { stopVideo(); return }
-        if (loadedId == m.id) { videoHost.visibility = View.VISIBLE; return }
+        if (loadedId == m.id) {videoHost.alpha = 1f; return }
         loadVideo(m)
     }
 
@@ -291,7 +292,7 @@ class ViewerActivity : AppCompatActivity() {
         rangeEnd = 0
         scrubbing = false
         vDuration = m.duration.toInt()
-        videoHost.visibility = View.INVISIBLE
+        videoHost.alpha = 0f
         vplayer.muted = muted
         vplayer.load(m.uri, !playing)
         updateTime(0, vDuration)
@@ -302,7 +303,7 @@ class ViewerActivity : AppCompatActivity() {
         loadedId = -1L
         vDuration = 0
         vplayer.release()
-        videoHost.visibility = View.GONE
+        videoHost.alpha = 0f
         updatePlayUi()
     }
 

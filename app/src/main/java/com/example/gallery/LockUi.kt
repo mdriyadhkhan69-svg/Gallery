@@ -188,7 +188,7 @@ object LockDialog {
         fields.last().setOnEditorActionListener { _, id, _ -> if (id == EditorInfo.IME_ACTION_DONE) { go(); true } else false }
 
         val scroll = ScrollView(act).apply {
-            isVerticalScrollbarEnabled = false
+            isVerticalScrollBarEnabled = false
             addView(card)
         }
         dlg.setContentView(scroll)

@@ -272,7 +272,7 @@ object DetailsSheet {
         }
 
         val scroll = ScrollView(act).apply {
-            isVerticalScrollbarEnabled = false
+            isVerticalScrollBarEnabled = false
             addView(list)
         }
         card.addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))

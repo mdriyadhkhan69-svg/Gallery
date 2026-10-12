@@ -222,12 +222,17 @@ class MainActivity : AppCompatActivity() {
                     setPadding(0, (8 * dp).toInt(), 0, 0)
                 })
                 setBackgroundResource(R.drawable.bg_menu_item)
-                setOnClickListener { d.dismiss(); e.action() }
+                isClickable = true
+                isFocusable = true
+                setOnClickListener { postDelayed({ d.dismiss(); e.action() }, 120) }
             }
             grid.addView(cell)
         }
         d.setContentView(grid)
-        (grid.parent as View).setBackgroundResource(R.drawable.bg_menu_sheet)
+        (grid.parent as View).apply {
+            setBackgroundResource(R.drawable.bg_menu_sheet)
+            backgroundTintList = null
+        }
         movePill(3, true)
         d.setOnDismissListener { movePill(current.coerceIn(0, 2), true) }
         d.show()

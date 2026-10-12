@@ -184,6 +184,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     }
 
     override fun onDestroyView() {
+        clearColFx()
         previewer?.release()
         previewer = null
         endDrag()
@@ -234,11 +235,86 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
             pos = lm.findFirstVisibleItemPosition().coerceAtLeast(0)
             off = lm.findViewByPosition(pos)?.top ?: 0
         }
+        val fewer = c < lm.spanCount
+        val snap = grabSnapshot()
         Prefs.columns = c
         lm.spanCount = c
         lm.scrollToPositionWithOffset(pos, off)
+        playColFx(snap, fewer)
+    }
+    // ---------- Column change transition ----------
+    private var colAnim: android.animation.ValueAnimator? = null
+    private var snapView: ImageView? = null
+
+    private fun clearColFx() {
+        colAnim?.removeAllListeners()
+        colAnim?.cancel()
+        colAnim = null
+        snapView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
+        snapView = null
+        if (::grid.isInitialized) {
+            grid.alpha = 1f
+            grid.scaleX = 1f
+            grid.scaleY = 1f
+            grid.elevation = 0f
+            grid.background = null
+        }
+        view?.findViewById<View>(R.id.fastScroll)?.translationZ = 0f
+        view?.findViewById<View>(R.id.btnTop)?.translationZ = 0f
     }
 
+    private fun grabSnapshot(): android.graphics.Bitmap? {
+        clearColFx()
+        if (grid.width <= 0 || grid.height <= 0) return null
+        return try {
+            val b = android.graphics.Bitmap.createBitmap(grid.width, grid.height, android.graphics.Bitmap.Config.ARGB_8888)
+            grid.draw(android.graphics.Canvas(b))
+            b
+        } catch (e: Throwable) { null }
+    }
+
+    private fun playColFx(snap: android.graphics.Bitmap?, fewer: Boolean) {
+        if (snap == null) return
+        val parent = grid.parent as? android.view.ViewGroup ?: return
+        val d = resources.displayMetrics.density
+        val iv = ImageView(requireContext())
+        iv.setImageBitmap(snap)
+        iv.scaleType = ImageView.ScaleType.FIT_XY
+        parent.addView(iv, parent.indexOfChild(grid), android.widget.FrameLayout.LayoutParams(grid.width, grid.height))
+        iv.translationY = grid.translationY
+        snapView = iv
+
+        val s0 = if (fewer) 0.95f else 1.05f
+        val oldTo = if (fewer) 1.04f else 0.96f
+        val maxElev = 10f * d
+        grid.background = android.graphics.drawable.ColorDrawable(0xFF000000.toInt())
+        grid.alpha = 0f
+        grid.scaleX = s0
+        grid.scaleY = s0
+        grid.elevation = 0f
+        view?.findViewById<View>(R.id.fastScroll)?.translationZ = 12f * d
+        view?.findViewById<View>(R.id.btnTop)?.translationZ = 12f * d
+
+        colAnim = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 220
+            interpolator = android.view.animation.DecelerateInterpolator()
+            addUpdateListener {
+                val f = it.animatedValue as Float
+                grid.alpha = f
+                val sc = s0 + (1f - s0) * f
+                grid.scaleX = sc
+                grid.scaleY = sc
+                grid.elevation = maxElev * Math.sin(Math.PI * f).toFloat()
+                val os = 1f + (oldTo - 1f) * f
+                iv.scaleX = os
+                iv.scaleY = os
+            }
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: android.animation.Animator) { clearColFx() }
+            })
+            start()
+        }
+    }
     // ---------- Drag to select ----------
     /** Long-press kore angul na tule drag korle, anchor theke angul porjonto sob item select hoy. Edge e dhorle auto-scroll. */
     private fun setupDragSelect() {

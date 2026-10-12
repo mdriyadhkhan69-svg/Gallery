@@ -111,6 +111,9 @@ class ViewerActivity : AppCompatActivity() {
         if (items.isEmpty()) { finish(); return }
         setContentView(R.layout.activity_viewer)
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        if (Build.VERSION.SDK_INT >= 28) window.attributes = window.attributes.apply {
+            layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
 
         top = findViewById(R.id.topBar); bottom = findViewById(R.id.bottomBar)
         nameView = findViewById(R.id.name); nameView.useDisplay()
@@ -134,9 +137,8 @@ class ViewerActivity : AppCompatActivity() {
         val topPad = dp(8f)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.root)) { v, ins ->
             val s = ins.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-            v.setPadding(s.left, 0, s.right, 0)
-            top.setPadding(0, s.top, 0, topPad)
-            bottom.setPadding(0, 0, 0, s.bottom)
+            top.setPadding(s.left, s.top, s.right, topPad)
+            bottom.setPadding(s.left, 0, s.right, s.bottom)
             WindowInsetsCompat.CONSUMED
         }
 

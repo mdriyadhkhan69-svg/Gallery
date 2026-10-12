@@ -16,6 +16,8 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.FrameLayout
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
@@ -130,4 +132,45 @@ class SearchController(
         button.contentDescription = "Search"
         imm.hideSoftInputFromWindow(input.windowToken, 0)
     }
+}
+
+/** Grey bottom-sheet delete confirmation (shob jaygay ek style) */
+fun showDeleteSheet(ctx: Context, message: String, onDelete: () -> Unit) {
+    val d = ctx.resources.displayMetrics.density
+    val dlg = BottomSheetDialog(ctx)
+    val outer = FrameLayout(ctx)
+    outer.setPadding((12 * d).toInt(), 0, (12 * d).toInt(), (12 * d).toInt())
+    val card = LinearLayout(ctx).apply {
+        orientation = LinearLayout.VERTICAL
+        background = GradientDrawable().apply { setColor(0xFF2C2C2C.toInt()); cornerRadius = 28 * d }
+        setPadding((8 * d).toInt(), (28 * d).toInt(), (8 * d).toInt(), (8 * d).toInt())
+    }
+    card.addView(TextView(ctx).apply {
+        text = message
+        textSize = 16f
+        setTextColor(Color.WHITE)
+        useDisplay()
+        gravity = Gravity.CENTER
+        setPadding((24 * d).toInt(), 0, (24 * d).toInt(), (20 * d).toInt())
+    })
+    val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+    fun btn(label: String, color: Int, act: () -> Unit) = TextView(ctx).apply {
+        text = label
+        textSize = 16f
+        setTextColor(color)
+        useDisplay()
+        gravity = Gravity.CENTER
+        layoutParams = LinearLayout.LayoutParams(0, (52 * d).toInt(), 1f)
+        setBackgroundResource(R.drawable.bg_press)
+        setOnClickListener { dlg.dismiss(); act() }
+    }
+    row.addView(btn("Cancel", Color.WHITE) { })
+    row.addView(btn("Delete", 0xFFFF4D4D.toInt()) { onDelete() })
+    card.addView(row)
+    outer.addView(card)
+    dlg.setContentView(outer)
+    (outer.parent as View).setBackgroundColor(Color.TRANSPARENT)
+    dlg.behavior.state = BottomSheetBehavior.STATE_EXPANDED
+    dlg.behavior.skipCollapsed = true
+    dlg.show()
 }

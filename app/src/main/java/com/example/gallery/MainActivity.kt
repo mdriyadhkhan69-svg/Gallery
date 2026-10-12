@@ -221,6 +221,7 @@ class MainActivity : AppCompatActivity() {
                     gravity = Gravity.CENTER; useDisplay()
                     setPadding(0, (8 * dp).toInt(), 0, 0)
                 })
+                setBackgroundResource(R.drawable.bg_press)
                 setOnClickListener { d.dismiss(); e.action() }
             }
             grid.addView(cell)

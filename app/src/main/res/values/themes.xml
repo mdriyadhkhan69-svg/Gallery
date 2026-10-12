@@ -5,4 +5,10 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="colorPrimary">@color/blue</item>
     </style>
+    <style name="App.Switch" parent="Widget.Material3.CompoundButton.MaterialSwitch">
+        <item name="thumbTint">@color/switch_thumb</item>
+        <item name="trackTint">@color/switch_track</item>
+        <item name="trackDecorationTint">@color/switch_outline</item>
+        <item name="thumbIcon">@null</item>
+    </style>
 </resources>

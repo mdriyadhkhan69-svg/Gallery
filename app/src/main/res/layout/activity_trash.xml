@@ -69,7 +69,9 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="56dp"
+        android:id="@+id/actionBar"
         android:background="@color/surface"
+        android:visibility="gone"
         android:orientation="horizontal">
 
         <TextView
@@ -91,7 +93,7 @@
             android:background="?attr/selectableItemBackground"
             android:gravity="center"
             android:text="Delete"
-            android:textColor="#FF4D4D"
+            android:textColor="@color/white"
             android:textSize="14sp" />
     </LinearLayout>
 </LinearLayout>

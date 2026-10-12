@@ -143,18 +143,15 @@ class TrashActivity : AppCompatActivity() {
     private fun confirmDelete() {
         val u = selectedUris()
         if (u.isEmpty()) { toast("Select items first"); return }
-        val d = MaterialAlertDialogBuilder(this)
-            .setMessage("Permanently delete ${u.size} item(s)? This cannot be undone.")
-            .setPositiveButton("Delete") { _, _ ->
-                if (Build.VERSION.SDK_INT >= 30) fire(MediaStore.createDeleteRequest(contentResolver, u).intentSender)
-            }
-            .setNegativeButton("Cancel", null).show()
-        d.getButton(DialogInterface.BUTTON_POSITIVE).setTextColor(0xFFFF4D4D.toInt())
+        showDeleteSheet(this, "Delete ${u.size} item(s)? This cannot be undone.") {
+            if (Build.VERSION.SDK_INT >= 30) fire(MediaStore.createDeleteRequest(contentResolver, u).intentSender)
+        }
     }
 
     private fun updateBar() {
         title.text = if (sel.isEmpty()) "Recycle Bin" else "${sel.size} selected"
         val on = sel.isNotEmpty()
+        findViewById<View>(R.id.actionBar).visibility = if (on) View.VISIBLE else View.GONE
         btnRestore.alpha = if (on) 1f else 0.4f
         btnDelete.alpha = if (on) 1f else 0.4f
     }

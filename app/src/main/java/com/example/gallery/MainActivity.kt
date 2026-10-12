@@ -14,6 +14,10 @@ import android.view.Gravity
 import android.view.View
 import android.view.animation.DecelerateInterpolator
 import android.widget.GridLayout
+import android.widget.FrameLayout
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -44,7 +48,16 @@ class MainActivity : AppCompatActivity() {
         Prefs.init(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        edgeToEdge(findViewById(R.id.root))
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        val navBar = findViewById<View>(R.id.nav)
+        val navBase = (8 * resources.displayMetrics.density).toInt()
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.root)) { v, ins ->
+            val b = ins.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(b.left, b.top, b.right, 0)
+            (navBar.layoutParams as FrameLayout.LayoutParams).bottomMargin = navBase + b.bottom
+            navBar.requestLayout()
+            WindowInsetsCompat.CONSUMED
+        }
 
         permission = findViewById(R.id.permission)
         findViewById<TextView>(R.id.permText).useDisplay()

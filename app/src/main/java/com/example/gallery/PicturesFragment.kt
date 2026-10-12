@@ -468,6 +468,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     private fun startSelect() {
         if (search.active) closeSearch()
         adapter.selecting = true
+        adapter.notifyItemRangeChanged(0, adapter.itemCount, "sel")
         updateBar()
     }
 

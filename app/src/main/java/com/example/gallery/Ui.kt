@@ -76,7 +76,7 @@ fun showDarkMenu(anchor: View, items: List<String>, onClick: (Int) -> Unit) {
 }
 fun confirmTrash(ctx: Context, count: Int, onYes: () -> Unit) {
     val msg = if (count == 1) "Move this item to the Recycle Bin?" else "Move $count items to the Recycle Bin?"
-    showDeleteSheet(ctx, msg, if (android.os.Build.VERSION.SDK_INT >= 30) "Move to Recycle Bin" else "Delete", Color.WHITE, onYes)
+    showDeleteSheet(ctx, msg, if (android.os.Build.VERSION.SDK_INT >= 30) "Move to Recycle Bin" else "Delete", Colors.BLUE, Colors.BLUE, onYes)
 }
 
 /** Naam lekhar dialog (album / story create & rename) */
@@ -133,7 +133,7 @@ class SearchController(
 }
 
 /** Grey bottom-sheet delete confirmation (shob jaygay ek style) */
-fun showDeleteSheet(ctx: Context, message: String, confirmLabel: String = "Delete", confirmColor: Int = 0xFFFF4D4D.toInt(), onDelete: () -> Unit) {
+fun showDeleteSheet(ctx: Context, message: String, confirmLabel: String = "Delete",confirmColor: Int = 0xFFFF4D4D.toInt(), cancelColor: Int = Color.WHITE, onDelete: () -> Unit) {
     val d = ctx.resources.displayMetrics.density
     val dlg = BottomSheetDialog(ctx, R.style.App_BottomSheetDialog)
     val outer = FrameLayout(ctx)
@@ -151,7 +151,10 @@ fun showDeleteSheet(ctx: Context, message: String, confirmLabel: String = "Delet
         gravity = Gravity.CENTER
         setPadding((24 * d).toInt(), 0, (24 * d).toInt(), (20 * d).toInt())
     })
-    val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+    val row = LinearLayout(ctx).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_HORIZONTAL
+    }
     fun btn(label: String, color: Int, act: () -> Unit) = TextView(ctx).apply {
         text = label
         textSize = 16f
@@ -161,11 +164,11 @@ fun showDeleteSheet(ctx: Context, message: String, confirmLabel: String = "Delet
         isSingleLine = true
         setPadding((20 * d).toInt(), 0, (20 * d).toInt(), 0)
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, (52 * d).toInt())
-        setBackgroundResource(R.drawable.bg_press)
+        setBackgroundResource(R.drawable.bg_dialog_btn)
         setOnClickListener { dlg.dismiss(); act() }
     }
-    row.addView(btn("Cancel", Color.WHITE) { })
-    row.addView(View(ctx), LinearLayout.LayoutParams(0, 1, 1f))
+    row.addView(btn("Cancel", cancelColor) { })
+    row.addView(View(ctx), LinearLayout.LayoutParams((8 * d).toInt(), 1))
     row.addView(btn(confirmLabel, confirmColor) { onDelete() })
     card.addView(row)
     outer.addView(card)

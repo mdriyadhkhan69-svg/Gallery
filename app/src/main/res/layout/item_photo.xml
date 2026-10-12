@@ -12,12 +12,6 @@
         android:contentDescription="Photo"
         android:scaleType="centerCrop" />
 
-    <View
-        android:id="@+id/selBox"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@drawable/bg_photo_sel"
-        android:visibility="gone" />
 
     <ImageView
         android:id="@+id/check"

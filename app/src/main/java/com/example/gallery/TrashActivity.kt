@@ -1,12 +1,15 @@
 package com.example.gallery
 
-import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.DialogInterface
+import android.content.IntentSender
+import android.database.ContentObserver
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
@@ -16,18 +19,16 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class TrashActivity : AppCompatActivity() {
 
-    private class T(val id: Long, val uri: Uri, val name: String, val video: Boolean, val expiresMs: Long)
+    private class T(val id: Long, val uri: Uri, val video: Boolean, val expiresMs: Long)
 
     private val items = ArrayList<T>()
     private val sel = HashSet<Long>()
@@ -36,6 +37,10 @@ class TrashActivity : AppCompatActivity() {
     private lateinit var title: TextView
     private lateinit var btnRestore: TextView
     private lateinit var btnDelete: TextView
+
+    private val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+        override fun onChange(selfChange: Boolean) { load() }
+    }
 
     private val launcher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
         sel.clear(); load()
@@ -63,11 +68,23 @@ class TrashActivity : AppCompatActivity() {
         btnDelete.setOnClickListener { confirmDelete() }
         listAdapter = Adapter()
         val rv = findViewById<RecyclerView>(R.id.list)
-        rv.layoutManager = LinearLayoutManager(this)
+        rv.layoutManager = GridLayoutManager(this, Prefs.columns)
         rv.adapter = listAdapter
         rv.itemAnimator = null
+        rv.setHasFixedSize(true)
+        contentResolver.registerContentObserver(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true, observer)
+        contentResolver.registerContentObserver(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, true, observer)
         updateBar()
+    }
+
+    override fun onResume() {
+        super.onResume()
         load()
+    }
+
+    override fun onDestroy() {
+        contentResolver.unregisterContentObserver(observer)
+        super.onDestroy()
     }
 
     private fun load() {
@@ -87,54 +104,32 @@ class TrashActivity : AppCompatActivity() {
     private fun query(): List<T> {
         val out = ArrayList<T>()
         if (Build.VERSION.SDK_INT < 30) return out
-        val typeCol = MediaStore.Files.FileColumns.MEDIA_TYPE
-        val proj = arrayOf(
-            MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DISPLAY_NAME,
-            typeCol, MediaStore.MediaColumns.DATE_EXPIRES
-        )
-        val args = Bundle().apply {
-            putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_ONLY)
-            putString(ContentResolver.QUERY_ARG_SQL_SELECTION, "$typeCol IN (?, ?)")
-            putStringArray(
-                ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,
-                arrayOf(
-                    MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString(),
-                    MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO.toString()
-                )
-            )
-            putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER, "${MediaStore.MediaColumns.DATE_EXPIRES} DESC")
-        }
+        collect(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, false, out)
+        collect(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, true, out)
+        out.sortByDescending { it.expiresMs }
+        return out
+    }
+
+    @RequiresApi(30)
+    private fun collect(base: Uri, video: Boolean, out: MutableList<T>) {
+        val proj = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DATE_EXPIRES)
+        val args = Bundle().apply { putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_ONLY) }
         try {
-            contentResolver.query(MediaStore.Files.getContentUri("external"), proj, args, null)?.use { c ->
-                val iId = c.getColumnIndexOrThrow(proj[0]); val iName = c.getColumnIndexOrThrow(proj[1])
-                val iType = c.getColumnIndexOrThrow(proj[2]); val iExp = c.getColumnIndexOrThrow(proj[3])
+            contentResolver.query(base, proj, args, null)?.use { c ->
                 while (c.moveToNext()) {
-                    val id = c.getLong(iId)
-                    val video = c.getInt(iType) == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO
-                    val base = if (video) MediaStore.Video.Media.EXTERNAL_CONTENT_URI else MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                    val id = c.getLong(0)
                     val u = ContentUris.withAppendedId(base, id).buildUpon().appendQueryParameter("includeTrashed", "1").build()
-                    out.add(T(id, u, c.getString(iName) ?: "Item", video, c.getLong(iExp) * 1000))
+                    out.add(T(id, u, video, c.getLong(1) * 1000))
                 }
             }
         } catch (e: Exception) {
             android.util.Log.e("GalleryDbg", "trash query failed", e)
         }
-        return out
-    }
-
-    private fun info(t: T): String {
-        val day = 86_400_000L
-        val kind = if (t.video) "Video" else "Photo"
-        if (t.expiresMs <= 0) return kind
-        val deleted = t.expiresMs - 30L * day
-        val left = ((t.expiresMs - System.currentTimeMillis() + day - 1) / day).coerceAtLeast(0)
-        val d = SimpleDateFormat("d MMM", Locale.getDefault()).format(Date(deleted))
-        return "$kind · Deleted $d · $left ${if (left == 1L) "day" else "days"} left"
     }
 
     private fun selectedUris() = items.filter { it.id in sel }.map { it.uri.buildUpon().clearQuery().build() }
 
-    private fun fire(sender: android.content.IntentSender) {
+    private fun fire(sender: IntentSender) {
         try { launcher.launch(IntentSenderRequest.Builder(sender).build()) }
         catch (e: Exception) { toast("Couldn't complete the action") }
     }
@@ -167,10 +162,8 @@ class TrashActivity : AppCompatActivity() {
     private inner class Adapter : RecyclerView.Adapter<Adapter.VH>() {
         inner class VH(v: View) : RecyclerView.ViewHolder(v) {
             val img: ImageView = v.findViewById(R.id.thumb)
-            val name: TextView = v.findViewById(R.id.name)
-            val sub: TextView = v.findViewById(R.id.sub)
             val check: ImageView = v.findViewById(R.id.check)
-            init { name.useDisplay(); sub.useDisplay(); img.roundCorners(10f) }
+            val vid: View = v.findViewById(R.id.vid)
         }
 
         override fun onCreateViewHolder(p: ViewGroup, t: Int) =
@@ -178,13 +171,12 @@ class TrashActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(h: VH, i: Int) {
             val t = items[i]
-            Glide.with(h.img).load(t.uri).override(240).centerCrop()
+            Glide.with(h.img).load(t.uri).override(400).centerCrop()
                 .placeholder(ColorDrawable(0xFF161616.toInt())).into(h.img)
-            h.name.text = t.name
-            h.sub.text = info(t)
+            h.vid.visibility = if (t.video) View.VISIBLE else View.GONE
             val on = t.id in sel
-            if (on) { h.check.setImageResource(R.drawable.ic_check_filled); h.check.clearColorFilter() }
-            else { h.check.setImageResource(R.drawable.ic_circle); h.check.setColorFilter(0xFFB0B0B0.toInt()) }
+            h.check.setImageResource(if (on) R.drawable.ic_check_filled else R.drawable.ic_circle)
+            h.check.clearColorFilter()
             h.itemView.setOnClickListener {
                 val p = h.bindingAdapterPosition
                 if (p == RecyclerView.NO_POSITION) return@setOnClickListener

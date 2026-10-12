@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="40dp"
-    android:layout_height="52dp"
+    android:layout_width="30dp"
+    android:layout_height="42dp"
     android:layout_marginStart="3dp"
-    android:layout_marginTop="6dp"
+    android:layout_marginTop="7dp"
     android:layout_marginEnd="3dp"
-    android:layout_marginBottom="6dp">
+    android:layout_marginBottom="7dp">
 
     <ImageView
         android:id="@+id/thumb"

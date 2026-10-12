@@ -75,11 +75,12 @@ class StoriesFragment : Fragment(R.layout.fragment_stories) {
             onHeartChanged = { if (favOnly) refresh() },
             onLong = { st -> storyOptions(st) }
         )
-        v.findViewById<RecyclerView>(R.id.list).apply {
-            layoutManager = LinearLayoutManager(requireContext())
-            adapter = this@StoriesFragment.adapter
-            itemAnimator = null
-        }
+        val storyList = v.findViewById<RecyclerView>(R.id.list)
+        storyList.layoutManager = LinearLayoutManager(requireContext())
+        storyList.adapter = adapter
+        storyList.itemAnimator = null
+        v.findViewById<TextView>(R.id.pullTitle).useDisplay()
+        PullHeader(storyList, v.findViewById(R.id.pullHeader))
         vm.all.observe(viewLifecycleOwner) { refresh() }
         vm.loaded.observe(viewLifecycleOwner) { refresh() }
     }

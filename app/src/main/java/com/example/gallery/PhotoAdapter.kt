@@ -115,7 +115,6 @@ class PhotoAdapter(
         private val fav: ImageView = v.findViewById(R.id.fav)
         private val vid: View = v.findViewById(R.id.vid)
         private val dur: TextView = v.findViewById(R.id.dur)
-        private val selBox: View = v.findViewById(R.id.selBox)
         private val dupBadge: View = v.findViewById(R.id.dupBadge)
         private val dupIcon: ImageView = v.findViewById(R.id.dupIcon)
         private val dupCount: TextView = v.findViewById(R.id.dupCount)
@@ -154,14 +153,8 @@ class PhotoAdapter(
         fun bindSelection(r: Row.Photo) {
             val sel = r.m.id in selected
             check.visibility = if (selecting) View.VISIBLE else View.GONE
-            selBox.visibility = if (sel) View.VISIBLE else View.GONE
-            if (sel) {
-                check.setImageResource(R.drawable.ic_check_filled)
-                check.clearColorFilter()
-            } else {
-                check.setImageResource(R.drawable.ic_circle)
-                check.setColorFilter(0xFFB0B0B0.toInt())
-            }
+            check.setImageResource(if (sel) R.drawable.ic_check_filled else R.drawable.ic_circle)
+            check.clearColorFilter()
             fav.visibility = if (Prefs.has("fav", "p${r.m.id}")) View.VISIBLE else View.GONE
             val dc = Dups.countOf(r.m.id)
             if (dc > 1) {

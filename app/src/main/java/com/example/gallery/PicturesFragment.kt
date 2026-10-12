@@ -46,6 +46,9 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     private lateinit var sub: TextView
     private var subText = ""
     private var previewer: GridPreviewer? = null
+    private lateinit var pullTitle: TextView
+    private lateinit var pullSub: TextView
+    private var pullSubText = ""
 
     // drag-select state
     private var dragging = false
@@ -121,6 +124,9 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         setupDragSelect()
         ScrollAssist.attach(grid, v.findViewById(R.id.fastScroll), v.findViewById(R.id.btnTop))
         if (mode != "all" && mode != "pick") previewer = GridPreviewer(grid, adapter)
+        pullTitle = v.findViewById(R.id.pullTitle); pullTitle.useDisplay()
+        pullSub = v.findViewById(R.id.pullSub); pullSub.useDisplay()
+        PullHeader(grid, v.findViewById(R.id.pullHeader)) { !adapter.selecting && !dragging && mode != "pick" }
 
         back.setOnClickListener {
             if (mode == "pick") requireActivity().finish()
@@ -341,6 +347,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         val cids = collIds()
         val base = (vm.all.value ?: emptyList()).filter { matchesMode(it, cids) }
         subText = summary(base)
+        pullSubText = countLabel(base.size, base.count { it.video }).replace(", ", " · ")
         var l = base
         if (query.isNotBlank()) l = l.filter { it.name.contains(query.trim(), true) }
         val rows: List<Row>
@@ -498,6 +505,9 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         previewer?.setBlocked(sel)
         sub.text = subText
         sub.visibility = if (!sel && mode != "all" && subText.isNotEmpty()) View.VISIBLE else View.GONE
+        pullTitle.text = if (mode == "all") "Pictures" else barTitleState
+        pullSub.text = pullSubText
+        pullSub.visibility = if (mode != "all" && pullSubText.isNotEmpty()) View.VISIBLE else View.GONE
     }
 
     // ---------- Albums / Stories actions ----------

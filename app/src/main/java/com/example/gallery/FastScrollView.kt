@@ -50,8 +50,8 @@ class FastScrollView @JvmOverloads constructor(c: Context, a: AttributeSet? = nu
 
     private fun lm(): LinearLayoutManager? = rv?.layoutManager as? LinearLayoutManager
 
-    private fun trackTop() = 8f * d
-    private fun trackLen() = (height - hh - 16f * d).coerceAtLeast(1f)
+    private fun trackTop() = 0f
+    private fun trackLen() = (height - hh).coerceAtLeast(1f)
     private fun handleTop() = trackTop() + frac * trackLen()
 
     private fun sync() {
@@ -63,10 +63,8 @@ class FastScrollView @JvmOverloads constructor(c: Context, a: AttributeSet? = nu
             !r.canScrollVertically(-1) -> 0f
             !r.canScrollVertically(1) -> 1f
             else -> {
-                val f = m.findFirstVisibleItemPosition().coerceAtLeast(0)
-                val l = m.findLastVisibleItemPosition().coerceAtLeast(f)
-                val v = l - f + 1
-                (f.toFloat() / (n - v).coerceAtLeast(1)).coerceIn(0f, 1f)
+                val range = r.computeVerticalScrollRange() - r.computeVerticalScrollExtent()
+                if (range <= 0) 0f else (r.computeVerticalScrollOffset().toFloat() / range).coerceIn(0f, 1f)
             }
         }
         invalidate()
@@ -200,5 +198,15 @@ object ScrollAssist {
             m.scrollToPositionWithOffset(40, 0)
             rv.postDelayed({ rv.smoothScrollToPosition(0) }, 40)
         } else rv.smoothScrollToPosition(0)
+        val guard = object : RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(r: RecyclerView, state: Int) {
+                if (state == RecyclerView.SCROLL_STATE_IDLE) {
+                    r.removeOnScrollListener(this)
+                    if (r.canScrollVertically(-1)) m.scrollToPositionWithOffset(0, 0)
+                }
+            }
+        }
+        rv.addOnScrollListener(guard)
+        rv.postDelayed({ rv.removeOnScrollListener(guard) }, 1500)
     }
 }

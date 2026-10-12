@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
+import android.view.animation.DecelerateInterpolator
 import android.widget.GridLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -32,6 +33,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tabs: List<TextView>
     private lateinit var permission: View
     private var current = -1
+    private lateinit var navPill: View
+    private lateinit var navItems: List<View>
 
     private val permLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { checkAccess(); vm.load() }
 
@@ -51,6 +54,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         tabs = listOf(R.id.tabPictures, R.id.tabAlbums, R.id.tabStories).map { findViewById<TextView>(it) }
+        navPill = findViewById(R.id.navPill)
+        navItems = listOf<View>(tabs[0], tabs[1], tabs[2], findViewById<View>(R.id.btnMenu))
         tabs.forEachIndexed { i, t -> t.useDisplay(); t.setOnClickListener { select(i, true) } }
         findViewById<View>(R.id.btnMenu).setOnClickListener { showMenuSheet() }
 
@@ -96,10 +101,22 @@ class MainActivity : AppCompatActivity() {
                     start()
                 }
             } else t.setTextColor(target)
-            t.paintFlags = if (sel) t.paintFlags or Paint.UNDERLINE_TEXT_FLAG else t.paintFlags and Paint.UNDERLINE_TEXT_FLAG.inv()
         }
+        movePill(i, animate)
     }
-
+    private fun movePill(i: Int, animate: Boolean) {
+        val v = navItems[i]
+        if (v.width == 0) { v.post { movePill(i, false) }; return }
+        val inset = 6 * resources.displayMetrics.density
+        val w = (v.width - 2 * inset).toInt()
+        val lp = navPill.layoutParams
+        if (lp.width != w) { lp.width = w; navPill.layoutParams = lp }
+        navPill.visibility = View.VISIBLE
+        val x = v.left + inset
+        navPill.animate().cancel()
+        if (animate) navPill.animate().translationX(x).setDuration(220).setInterpolator(DecelerateInterpolator()).start()
+        else navPill.translationX = x
+    }
     // ---------- Permission ----------
     private fun permissions(): Array<String> = when {
         Build.VERSION.SDK_INT >= 34 -> arrayOf(
@@ -130,7 +147,7 @@ class MainActivity : AppCompatActivity() {
     }
     // ---------- Settings ----------
     private fun showSettings() {
-        val items = arrayOf("Grid columns", "Photo sort order", "Show hidden albums & stories again", "Clear all favourites")
+        val items = arrayOf("Grid columns", "Photo sort order", "Show hidden albums & stories again", "Clear all favourites", "Allow instant Recycle Bin")
         MaterialAlertDialogBuilder(this).setTitle("Settings").setItems(items) { _, i ->
             when (i) {
                 0 -> MaterialAlertDialogBuilder(this).setTitle("Grid columns")
@@ -148,6 +165,8 @@ class MainActivity : AppCompatActivity() {
                     vm.publish()
                     Toast.makeText(this, "Hidden albums & stories are visible again", Toast.LENGTH_SHORT).show()
                 }
+                4 -> if (Build.VERSION.SDK_INT >= 31) startActivity(Intent(Settings.ACTION_REQUEST_MANAGE_MEDIA, Uri.fromParts("package", packageName, null)))
+                else Toast.makeText(this, "Not needed on this Android version", Toast.LENGTH_SHORT).show()
                 3 -> MaterialAlertDialogBuilder(this).setMessage("Clear all favourites?")
                     .setPositiveButton("Clear") { _, _ -> Prefs.setSet("fav", emptySet()); vm.publish() }
                     .setNegativeButton("Cancel", null).show()
@@ -195,6 +214,8 @@ class MainActivity : AppCompatActivity() {
         }
         d.setContentView(grid)
         (grid.parent as View).setBackgroundResource(R.drawable.bg_sheet)
+        movePill(3, true)
+        d.setOnDismissListener { movePill(current.coerceIn(0, 2), true) }
         d.show()
     }
 }

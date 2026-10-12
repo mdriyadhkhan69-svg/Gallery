@@ -93,6 +93,8 @@ class AlbumsFragment : Fragment(R.layout.fragment_albums) {
         albumList.adapter = adapter
         albumList.itemAnimator = null
         ScrollAssist.attach(albumList, v.findViewById(R.id.fastScroll), v.findViewById(R.id.btnTop))
+        v.findViewById<TextView>(R.id.pullTitle).useDisplay()
+        PullHeader(albumList, v.findViewById(R.id.pullHeader))
         vm.all.observe(viewLifecycleOwner) { refresh() }
         vm.loaded.observe(viewLifecycleOwner) { refresh() }
     }

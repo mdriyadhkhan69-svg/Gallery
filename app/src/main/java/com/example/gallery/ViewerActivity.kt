@@ -129,7 +129,6 @@ class ViewerActivity : AppCompatActivity() {
         timeText = findViewById(R.id.timeText); timeText.useDisplay()
         timelinePanel = findViewById(R.id.timelinePanel)
         expTimeline = findViewById(R.id.expTimeline)
-        expTimeline.trimEnabled = true
         expTimeline.interactive = true
 
         val topPad = dp(8f)
@@ -153,7 +152,7 @@ class ViewerActivity : AppCompatActivity() {
         film.layoutManager = filmLm
         film.adapter = filmAdapter
         film.itemAnimator = null
-        val side = (resources.displayMetrics.widthPixels - dp(40f)) / 2
+        val side = (resources.displayMetrics.widthPixels - dp(30f)) / 2
         film.setPadding(side, 0, side, 0)
         LinearSnapHelper().attachToRecyclerView(film)
         film.addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -659,7 +658,7 @@ class FilmAdapter(
         val m = items[i]
         val wide = i == wideIdx
         val lp = h.itemView.layoutParams
-        val w = ((if (wide) 150f else 40f) * d).toInt()
+        val w = ((if (wide) 120f else 30f) * d).toInt()
         if (lp.width != w) { lp.width = w; h.itemView.layoutParams = lp }
         h.thumb.visibility = if (wide) View.GONE else View.VISIBLE
         h.tl.visibility = if (wide) View.VISIBLE else View.GONE
@@ -667,7 +666,7 @@ class FilmAdapter(
 
         val on = i == selected && !wide
         val s = if (on) 1.15f else 1f
-        val ty = if (on) -4f * d else 0f
+        val ty = if (on) -2f * d else 0f
         val a = if (on) 1f else 0f
         val v = h.itemView
         v.animate().cancel(); h.ring.animate().cancel()

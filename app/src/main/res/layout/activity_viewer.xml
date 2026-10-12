@@ -152,7 +152,7 @@
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/filmstrip"
             android:layout_width="match_parent"
-            android:layout_height="64dp"
+            android:layout_height="56dp"
             android:clipChildren="false"
             android:clipToPadding="false"
             android:overScrollMode="never" />
@@ -167,20 +167,20 @@
             <ImageView
                 android:id="@+id/btnCollapse"
                 android:layout_width="56dp"
-                android:layout_height="28dp"
+                android:layout_height="16dp"
                 android:layout_gravity="center_horizontal"
                 android:background="@drawable/bg_press"
                 android:contentDescription="Collapse timeline"
-                android:padding="2dp"
+                android:padding="0dp"
                 android:src="@drawable/ic_expand_more" />
 
             <com.example.gallery.TimelineView
                 android:id="@+id/expTimeline"
                 android:layout_width="match_parent"
-                android:layout_height="76dp"
+                android:layout_height="40dp"
                 android:layout_marginStart="12dp"
                 android:layout_marginEnd="12dp"
-                android:layout_marginBottom="4dp" />
+                android:layout_marginBottom="0dp" />
         </LinearLayout>
 
         <LinearLayout

@@ -68,14 +68,13 @@
             android:visibility="gone" />
 
         <ImageView
-            android:id="@+id/btnSelect"
+            android:id="@+id/btnDup"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Select items"
+            android:contentDescription="Duplicate images"
             android:padding="12dp"
-            android:src="@drawable/ic_select"
-            app:tint="@color/white" />
+            android:src="@drawable/ic_duplicate" />
 
         <ImageView
             android:id="@+id/btnSearch"

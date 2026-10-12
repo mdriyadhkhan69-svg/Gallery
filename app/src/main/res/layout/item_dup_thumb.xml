@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="48dp"
+    android:layout_height="64dp"
+    android:layout_marginStart="4dp"
+    android:layout_marginEnd="4dp">
+
+    <ImageView
+        android:id="@+id/thumb"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="Thumbnail"
+        android:scaleType="centerCrop" />
+
+    <View
+        android:id="@+id/ring"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_film_sel"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/check"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="4dp"
+        android:contentDescription="Selected"
+        android:src="@drawable/ic_check_filled"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/crown"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="2dp"
+        android:contentDescription="Keep"
+        android:src="@drawable/ic_crown"
+        android:visibility="gone" />
+</FrameLayout>

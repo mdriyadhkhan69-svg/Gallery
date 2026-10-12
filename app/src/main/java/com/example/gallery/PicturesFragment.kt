@@ -1,6 +1,7 @@
 package com.example.gallery
 
 import android.app.Activity
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -32,7 +33,8 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     private lateinit var search: SearchController
     private lateinit var title: TextView
     private lateinit var back: ImageView
-    private lateinit var btnSelect: ImageView
+    private lateinit var btnDup: ImageView
+    private var dupMode = false
     private lateinit var btnSearch: ImageView
     private lateinit var btnMore: ImageView
     private lateinit var empty: TextView
@@ -96,16 +98,16 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         title = v.findViewById(R.id.title); title.useDisplay()
         sub = v.findViewById(R.id.subtitle); sub.useDisplay()
         back = v.findViewById(R.id.back)
-        btnSelect = v.findViewById(R.id.btnSelect)
+        btnDup = v.findViewById(R.id.btnDup)
         btnSearch = v.findViewById(R.id.btnSearch)
         btnMore = v.findViewById(R.id.btnMore)
         empty = v.findViewById(R.id.empty); empty.useDisplay()
         grid = v.findViewById(R.id.grid)
         val input = v.findViewById<EditText>(R.id.searchInput)
 
-        search = SearchController(input, listOf<View>(v.findViewById(R.id.titleBox), btnSelect, btnMore), btnSearch) { query = it; rebuild() }
+        search = SearchController(input, listOf<View>(v.findViewById(R.id.titleBox), btnDup, btnMore), btnSearch) { query = it; rebuild() }
 
-        adapter = PhotoAdapter({ r, p -> onTap(r, p) }, { r, p -> onLong(r, p) })
+        adapter = PhotoAdapter({ r, p -> onTap(r, p) }, { r, p -> onLong(r, p) }, { p -> onHeaderTap(p) }, { m -> onDup(m) })
         lm = GridLayoutManager(requireContext(), Prefs.columns)
         lm.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
             override fun getSpanSize(p: Int) = if (adapter.getItemViewType(p) == PhotoAdapter.HEADER) lm.spanCount else 1
@@ -125,7 +127,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
             else if (adapter.selecting) exitSelection()
             else requireActivity().finish()
         }
-        btnSelect.setOnClickListener { startSelect() }
+        btnDup.setOnClickListener { setDupMode(!dupMode) }
         btnSearch.setOnClickListener {
             when {
                 adapter.selecting && mode == "pick" -> confirmPick()
@@ -172,6 +174,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         updateBar()
         vm.all.observe(viewLifecycleOwner) { rebuild() }
         vm.loaded.observe(viewLifecycleOwner) { rebuild() }
+        vm.dupTick.observe(viewLifecycleOwner) { rebuild() }
     }
 
     override fun onDestroyView() {
@@ -337,20 +340,68 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         if (!::adapter.isInitialized) return
         val cids = collIds()
         val base = (vm.all.value ?: emptyList()).filter { matchesMode(it, cids) }
-        android.util.Log.d("GalleryDbg", "mode=$mode param=$param total=${vm.all.value?.size} matched=${base.size} loaded=${vm.loaded.value}")
         subText = summary(base)
         var l = base
         if (query.isNotBlank()) l = l.filter { it.name.contains(query.trim(), true) }
-        l = when (Prefs.sort) {
-            1 -> l.sortedBy { it.date }
-            2 -> l.sortedBy { it.name.lowercase() }
-            else -> l
+        val rows: List<Row>
+        if (dupMode) {
+            val built = buildDupRows(l)
+            items = built.first
+            rows = built.second
+        } else {
+            l = when (Prefs.sort) {
+                1 -> l.sortedBy { it.date }
+                2 -> l.sortedBy { it.name.lowercase() }
+                else -> l
+            }
+            items = l
+            rows = buildRows(l, Prefs.sort != 2)
         }
-        items = l
-        adapter.submitList(buildRows(l, Prefs.sort != 2))
-        val show = l.isEmpty() && vm.loaded.value == true
+        adapter.submitList(rows) { adapter.notifyItemRangeChanged(0, adapter.itemCount, "sel") }
+        val show = rows.isEmpty() && vm.loaded.value == true
         empty.visibility = if (show) View.VISIBLE else View.GONE
-        empty.text = if (query.isNotBlank()) "No results" else "Nothing here"
+        empty.text = when {
+            query.isNotBlank() -> "No results"
+            dupMode -> if (Dups.ready) "No duplicate files found" else "Scanning for duplicates…"
+            else -> "Nothing here"
+        }
+        updateBar()
+    }
+
+    private fun buildDupRows(list: List<Media>): Pair<List<Media>, List<Row>> {
+        val byId = list.associateBy { it.id }
+        val groups = Dups.groups.values
+            .map { ids -> ids to ids.mapNotNull { byId[it] } }
+            .filter { it.second.isNotEmpty() }
+            .sortedByDescending { it.second.first().date }
+        val flat = ArrayList<Media>()
+        val rows = ArrayList<Row>()
+        groups.forEachIndexed { gi, g ->
+            rows.add(Row.Header("Group ${gi + 1} · ${g.first.size} files"))
+            g.second.forEach { rows.add(Row.Photo(it, flat.size)); flat.add(it) }
+        }
+        return flat to rows
+    }
+
+    private fun setDupMode(on: Boolean) {
+        dupMode = on
+        adapter.dupActive = on
+        updateBar()
+        rebuild()
+        grid.post { grid.scrollToPosition(0) }
+    }
+
+    private fun onDup(m: Media) {
+        val key = Dups.groupOf[m.id] ?: return
+        previewer?.stop()
+        startActivity(DupGroupActivity.intent(requireContext(), key, m.id))
+    }
+
+    private fun onHeaderTap(pos: Int) {
+        val ids = adapter.sectionIds(pos)
+        if (ids.isEmpty()) return
+        if (ids.all { it in adapter.selected }) adapter.selected.removeAll(ids.toSet()) else adapter.selected.addAll(ids)
+        adapter.notifyItemRangeChanged(0, adapter.itemCount, "sel")
         updateBar()
     }
 
@@ -421,7 +472,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         updateBar()
     }
 
-    private fun closeSearch() { search.close(); backCb.isEnabled = adapter.selecting }
+    private fun closeSearch() { search.close(); backCb.isEnabled = adapter.selecting; updateBar() }
 
     private fun selectedUris() = items.filter { it.id in adapter.selected }.map { it.uri }
 
@@ -432,7 +483,6 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         btnMore.setImageResource(R.drawable.ic_more); btnMore.contentDescription = "More options"
         if (sel) {
             title.text = "${adapter.selected.size} selected"
-            btnSelect.visibility = View.GONE
             if (mode == "pick") {
                 btnSearch.setImageResource(R.drawable.ic_select); btnSearch.contentDescription = "Done"
             } else {
@@ -440,9 +490,10 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
             }
         } else {
             title.text = barTitleState
-            btnSelect.visibility = View.VISIBLE
             btnSearch.setImageResource(R.drawable.ic_search); btnSearch.contentDescription = "Search"
         }
+        btnDup.visibility = if (sel || mode == "pick" || search.active) View.GONE else View.VISIBLE
+        btnDup.setColorFilter(if (dupMode) Colors.BLUE else Color.WHITE)
         backCb.isEnabled = sel || search.active
         previewer?.setBlocked(sel)
         sub.text = subText

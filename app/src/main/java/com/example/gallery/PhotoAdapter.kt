@@ -1,6 +1,7 @@
 package com.example.gallery
 
 import android.graphics.drawable.ColorDrawable
+import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,10 +15,12 @@ import com.bumptech.glide.Glide
 class PhotoAdapter(
     private val onTap: (Row.Photo, Int) -> Unit,
     private val onLong: (Row.Photo, Int) -> Unit,
-    private val onHeader: (Int) -> Unit
+    private val onHeader: (Int) -> Unit,
+    private val onDup: (Media) -> Unit
 ) : ListAdapter<Row, RecyclerView.ViewHolder>(Diff) {
 
     var selecting = false
+    var dupActive = false
     val selected = HashSet<Long>()
 
     companion object {
@@ -114,6 +117,18 @@ class PhotoAdapter(
         private val vid: View = v.findViewById(R.id.vid)
         private val dur: TextView = v.findViewById(R.id.dur)
         private val selBox: View = v.findViewById(R.id.selBox)
+        private val dupBadge: View = v.findViewById(R.id.dupBadge)
+        private val dupIcon: ImageView = v.findViewById(R.id.dupIcon)
+        private val dupCount: TextView = v.findViewById(R.id.dupCount)
+
+        init {
+            dupCount.useDisplay()
+            dupBadge.setOnClickListener {
+                val p = bindingAdapterPosition
+                if (p != RecyclerView.NO_POSITION) (getItem(p) as? Row.Photo)?.let { onDup(it.m) }
+            }
+            dupBadge.setOnLongClickListener { v.performLongClick(); true }
+        }
 
         init {
             v.setOnClickListener {
@@ -140,7 +155,7 @@ class PhotoAdapter(
         fun bindSelection(r: Row.Photo) {
             val sel = r.m.id in selected
             check.visibility = if (selecting) View.VISIBLE else View.GONE
-            selBox.visibility = View.GONE
+            selBox.visibility = if (sel) View.VISIBLE else View.GONE
             if (sel) {
                 check.setImageResource(R.drawable.ic_check_filled)
                 check.clearColorFilter()
@@ -149,6 +164,12 @@ class PhotoAdapter(
                 check.setColorFilter(0xFFB0B0B0.toInt())
             }
             fav.visibility = if (Prefs.has("fav", "p${r.m.id}")) View.VISIBLE else View.GONE
+            val dc = Dups.countOf(r.m.id)
+            if (dc > 1) {
+                dupBadge.visibility = View.VISIBLE
+                dupCount.text = dc.toString()
+                dupIcon.setColorFilter(if (dupActive) Colors.BLUE else Color.WHITE)
+            } else dupBadge.visibility = View.GONE
         }
     }
 }

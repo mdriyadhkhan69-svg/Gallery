@@ -28,6 +28,7 @@
         <activity android:name=".GridActivity" android:exported="false" />
         <activity android:name=".HideAlbumsActivity" android:exported="false" />
         <activity android:name=".TrashActivity" android:exported="false" />
+        <activity android:name=".DupGroupActivity" android:exported="false" />
         <activity android:name=".ViewerActivity" android:exported="false" />
         <activity
             android:name=".EditorActivity"

@@ -112,7 +112,7 @@ class TrashActivity : AppCompatActivity() {
                     val id = c.getLong(iId)
                     val video = c.getInt(iType) == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO
                     val base = if (video) MediaStore.Video.Media.EXTERNAL_CONTENT_URI else MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-                    val u = MediaStore.setIncludeTrashed(ContentUris.withAppendedId(base, id))
+                    val u = ContentUris.withAppendedId(base, id).buildUpon().appendQueryParameter("includeTrashed", "1").build()
                     out.add(T(id, u, c.getString(iName) ?: "Item", video, c.getLong(iExp) * 1000))
                 }
             }
@@ -132,7 +132,7 @@ class TrashActivity : AppCompatActivity() {
         return "$kind · Deleted $d · $left ${if (left == 1L) "day" else "days"} left"
     }
 
-    private fun selectedUris() = items.filter { it.id in sel }.map { it.uri }
+    private fun selectedUris() = items.filter { it.id in sel }.map { it.uri.buildUpon().clearQuery().build() }
 
     private fun fire(sender: android.content.IntentSender) {
         try { launcher.launch(IntentSenderRequest.Builder(sender).build()) }

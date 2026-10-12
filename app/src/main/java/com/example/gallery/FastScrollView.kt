@@ -10,7 +10,6 @@ import android.view.MotionEvent
 import android.view.View
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import kotlin.math.roundToInt
 
 class FastScrollView @JvmOverloads constructor(c: Context, a: AttributeSet? = null) : View(c, a) {
 
@@ -51,15 +50,25 @@ class FastScrollView @JvmOverloads constructor(c: Context, a: AttributeSet? = nu
 
     private fun lm(): LinearLayoutManager? = rv?.layoutManager as? LinearLayoutManager
 
-    private fun trackTop() = height * 0.25f
-    private fun trackLen() = (height * 0.5f - hh).coerceAtLeast(1f)
+    private fun trackTop() = 8f * d
+    private fun trackLen() = (height - hh - 16f * d).coerceAtLeast(1f)
     private fun handleTop() = trackTop() + frac * trackLen()
 
     private fun sync() {
         val r = rv ?: return
-        val range = r.computeVerticalScrollRange() - r.computeVerticalScrollExtent()
-        if (range <= 0) return
-        frac = (r.computeVerticalScrollOffset().toFloat() / range).coerceIn(0f, 1f)
+        val m = lm() ?: return
+        val n = r.adapter?.itemCount ?: 0
+        if (n <= 1) { frac = 0f; invalidate(); return }
+        frac = when {
+            !r.canScrollVertically(-1) -> 0f
+            !r.canScrollVertically(1) -> 1f
+            else -> {
+                val f = m.findFirstVisibleItemPosition().coerceAtLeast(0)
+                val l = m.findLastVisibleItemPosition().coerceAtLeast(f)
+                val v = l - f + 1
+                (f.toFloat() / (n - v).coerceAtLeast(1)).coerceIn(0f, 1f)
+            }
+        }
         invalidate()
     }
 
@@ -82,11 +91,17 @@ class FastScrollView @JvmOverloads constructor(c: Context, a: AttributeSet? = nu
 
     private fun moveTo(y: Float) {
         val r = rv ?: return
+        val m = lm() ?: return
+        val n = r.adapter?.itemCount ?: 0
+        if (n == 0) return
         frac = ((y - trackTop()) / trackLen()).coerceIn(0f, 1f)
         invalidate()
-        val range = r.computeVerticalScrollRange() - r.computeVerticalScrollExtent()
-        if (range <= 0) return
-        r.scrollBy(0, (frac * range).toInt() - r.computeVerticalScrollOffset())
+        val pos = when {
+            frac <= 0.001f -> 0
+            frac >= 0.999f -> n - 1
+            else -> Math.round(frac * (n - vis).coerceAtLeast(1)).coerceIn(0, n - 1)
+        }
+        m.scrollToPositionWithOffset(pos, 0)
     }
 
     override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) {
@@ -104,7 +119,7 @@ class FastScrollView @JvmOverloads constructor(c: Context, a: AttributeSet? = nu
             MotionEvent.ACTION_DOWN -> {
                 if (visibility != VISIBLE || alpha < 0.3f) return false
                 val top = handleTop()
-                val left = width - hw - edgeGap - 14f * d
+                val left = width - hw - edgeGap - 20f * d
                 if (e.x < left || e.y < top - 8f * d || e.y > top + hh + 8f * d) return false
                 val m = lm() ?: return false
                 val f = m.findFirstVisibleItemPosition()
@@ -122,7 +137,6 @@ class FastScrollView @JvmOverloads constructor(c: Context, a: AttributeSet? = nu
             MotionEvent.ACTION_MOVE -> if (dragging) { moveTo(e.y - grabOff); return true }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> if (dragging) {
                 dragging = false
-                sync()
                 schedule()
                 return true
             }

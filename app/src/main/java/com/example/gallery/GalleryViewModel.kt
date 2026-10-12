@@ -23,6 +23,8 @@ class GalleryViewModel(app: Application) : AndroidViewModel(app) {
     /** Photo + video, hidden album bade, newest first */
     val all: LiveData<List<Media>> = _all
     val loaded = MutableLiveData(false)
+    val dupTick = MutableLiveData(0)
+    private var dupJob: Job? = null
 
     private var raw: List<Media> = Library.snapshot
     private var storyCache: List<Story>? = null
@@ -56,11 +58,23 @@ class GalleryViewModel(app: Application) : AndroidViewModel(app) {
     fun publish() {
         val hidden = Prefs.getSet("hidden")
         storyCache = null
-        _all.value = if (hidden.isEmpty()) raw else raw.filter { it.bucketId.toString() !in hidden }
+        val vis = if (hidden.isEmpty()) raw else raw.filter { it.bucketId.toString() !in hidden }
+        _all.value = vis
+        scanDups(vis)
+    }
+
+    private fun scanDups(list: List<Media>) {
+        dupJob?.cancel()
+        dupJob = viewModelScope.launch(Dispatchers.IO) {
+            Dups.compute(getApplication<Application>(), list)
+            withContext(Dispatchers.Main) { dupTick.value = (dupTick.value ?: 0) + 1 }
+        }
     }
 
     /** Files table theke image + video ek query te. Files table e id unique, tai photo/video id er clash hoy na. */
-    private fun query(): List<Media>? {
+    fun queryBucket(bucketId: String): List<Media> = query(bucketId).orEmpty()
+
+    private fun query(bucket: String? = null): List<Media>? {
         val out = ArrayList<Media>()
         val files = MediaStore.Files.getContentUri("external")
         val imgBase = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
@@ -73,10 +87,15 @@ class GalleryViewModel(app: Application) : AndroidViewModel(app) {
             MediaStore.Images.Media.SIZE, MediaStore.Images.Media.WIDTH, MediaStore.Images.Media.HEIGHT,
             typeCol, MediaStore.Video.Media.DURATION
         )
-        val sel = "$typeCol IN (?, ?)"
-        val args = arrayOf(
+        val sel = if (bucket == null) "$typeCol IN (?, ?)"
+        else "$typeCol IN (?, ?) AND ${MediaStore.Images.Media.BUCKET_ID} = ?"
+        val args = if (bucket == null) arrayOf(
             MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString(),
             MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO.toString()
+        ) else arrayOf(
+            MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString(),
+            MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO.toString(),
+            bucket
         )
         try {
             getApplication<Application>().contentResolver

@@ -33,12 +33,45 @@
         android:id="@+id/fav"
         android:layout_width="14dp"
         android:layout_height="14dp"
-        android:layout_gravity="bottom|start"
+        android:layout_gravity="top|end"
         android:layout_margin="6dp"
         android:contentDescription="Favourite"
         android:src="@drawable/ic_favorite"
         android:visibility="gone"
         app:tint="@color/white" />
+
+    <LinearLayout
+        android:id="@+id/dupBadge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
+        android:layout_margin="4dp"
+        android:background="@drawable/bg_dup_badge"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="5dp"
+        android:paddingTop="3dp"
+        android:paddingEnd="6dp"
+        android:paddingBottom="3dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/dupIcon"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:contentDescription="Duplicates"
+            android:src="@drawable/ic_duplicate" />
+
+        <TextView
+            android:id="@+id/dupCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="3dp"
+            android:shadowColor="#000000"
+            android:shadowRadius="4"
+            android:textColor="@color/white"
+            android:textSize="11sp" />
+    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/vid"

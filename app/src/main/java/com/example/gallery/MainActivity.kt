@@ -85,7 +85,16 @@ class MainActivity : AppCompatActivity() {
 
     // ---------- Tabs ----------
     private fun select(i: Int, animate: Boolean) {
-        if (i == current) return
+        if (i == current) {
+            if (animate) {
+                when (val f = supportFragmentManager.findFragmentByTag("tab$i")) {
+                    is PicturesFragment -> f.scrollToTop()
+                    is AlbumsFragment -> f.scrollToTop()
+                    is StoriesFragment -> f.scrollToTop()
+                }
+            }
+            return
+        }
         val fm = supportFragmentManager
         val ft = fm.beginTransaction().setReorderingAllowed(true)
         if (animate) ft.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)

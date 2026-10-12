@@ -12,6 +12,8 @@ import kotlin.math.abs
 class PullHeader(
     private val rv: RecyclerView,
     private val header: View,
+    private val target: View = rv,
+    private val onProgress: ((Float) -> Unit)? = null,
     private val enabled: () -> Boolean = { true }
 ) {
     private val maxPull = 120f * rv.resources.displayMetrics.density
@@ -99,7 +101,7 @@ class PullHeader(
         animateTo(maxPull)
     }
 
-    private fun collapse() {
+    fun collapse() {
         if (!expanded) return
         expanded = false
         animateTo(0f)
@@ -118,7 +120,8 @@ class PullHeader(
 
     private fun setPull(p: Float) {
         pull = p
-        rv.translationY = p
+        target.translationY = p
+        onProgress?.invoke((p / maxPull).coerceIn(0f, 1f))
         if (p <= 0.5f) {
             header.visibility = View.INVISIBLE
             header.clipBounds = null

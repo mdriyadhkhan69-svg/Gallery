@@ -39,7 +39,7 @@
             android:id="@+id/btnAdd"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/bg_icon_ripple"
             android:contentDescription="Create album"
             android:padding="12dp"
             android:src="@drawable/ic_add"
@@ -49,7 +49,7 @@
             android:id="@+id/btnSearch"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/bg_icon_ripple"
             android:contentDescription="Search"
             android:padding="12dp"
             android:src="@drawable/ic_search"
@@ -59,26 +59,18 @@
             android:id="@+id/btnMore"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/bg_icon_ripple"
             android:contentDescription="More options"
             android:padding="12dp"
             android:src="@drawable/ic_more"
             app:tint="@color/white" />
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/heading"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:padding="16dp"
-        android:text="My albums"
-        android:textColor="#B0B0B0"
-        android:textSize="17sp" />
-
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
+
         <LinearLayout
             android:id="@+id/pullHeader"
             android:layout_width="match_parent"
@@ -99,12 +91,30 @@
                 android:textColor="@color/white"
                 android:textSize="32sp" />
         </LinearLayout>
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/list"
+
+        <LinearLayout
+            android:id="@+id/content"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:paddingBottom="120dp" />
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="16dp"
+                android:text="My albums"
+                android:textColor="#B0B0B0"
+                android:textSize="17sp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/list"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="false"
+                android:paddingBottom="120dp" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/empty"
@@ -114,6 +124,7 @@
             android:textColor="@color/gray"
             android:textSize="14sp"
             android:visibility="gone" />
+
         <com.example.gallery.FastScrollView
             android:id="@+id/fastScroll"
             android:layout_width="match_parent"

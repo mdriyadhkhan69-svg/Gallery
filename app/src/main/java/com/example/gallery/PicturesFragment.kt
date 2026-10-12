@@ -49,6 +49,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     private lateinit var pullTitle: TextView
     private lateinit var pullSub: TextView
     private var pullSubText = ""
+    private var pullHdr: PullHeader? = null
 
     // drag-select state
     private var dragging = false
@@ -126,7 +127,12 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         if (mode != "all" && mode != "pick") previewer = GridPreviewer(grid, adapter)
         pullTitle = v.findViewById(R.id.pullTitle); pullTitle.useDisplay()
         pullSub = v.findViewById(R.id.pullSub); pullSub.useDisplay()
-        PullHeader(grid, v.findViewById(R.id.pullHeader)) { !adapter.selecting && !dragging && mode != "pick" }
+        val titleBoxView = v.findViewById<View>(R.id.titleBox)
+        pullHdr = PullHeader(
+            grid, v.findViewById(R.id.pullHeader),
+            onProgress = { f -> titleBoxView.alpha = (1f - f * 1.6f).coerceIn(0f, 1f) },
+            enabled = { !adapter.selecting && !dragging && mode != "pick" }
+        )
 
         back.setOnClickListener {
             if (mode == "pick") requireActivity().finish()
@@ -187,12 +193,25 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         clearColFx()
         previewer?.release()
         previewer = null
+        pullHdr = null
         endDrag()
         super.onDestroyView()
     }
 
     /** Settings theke column change korle call hoy */
     fun applyColumns() { if (::lm.isInitialized) setColumns(Prefs.columns) }
+
+    /** Active tab abar tap korle top e smooth scroll */
+    fun scrollToTop() {
+        if (!::grid.isInitialized || !isAdded) return
+        if (colAnim?.isRunning == true) return
+        grid.stopScroll()
+        if (!grid.canScrollVertically(-1)) return
+        if (lm.findFirstVisibleItemPosition() > 40) {
+            lm.scrollToPositionWithOffset(40, 0)
+            grid.postDelayed({ grid.smoothScrollToPosition(0) }, 40)
+        } else grid.smoothScrollToPosition(0)
+    }
 
     // ---------- Pinch to change columns (2..7) ----------
     private fun setupPinch() {
@@ -542,6 +561,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     }
 
     private fun startSelect() {
+        pullHdr?.collapse()
         if (search.active) closeSearch()
         adapter.selecting = true
         adapter.notifyItemRangeChanged(0, adapter.itemCount, "sel")

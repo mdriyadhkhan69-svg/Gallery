@@ -18,7 +18,7 @@
             android:id="@+id/back"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/bg_icon_ripple"
             android:contentDescription="Back"
             android:padding="12dp"
             android:src="@drawable/ic_arrow_back"

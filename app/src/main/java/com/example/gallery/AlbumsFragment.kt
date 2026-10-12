@@ -39,6 +39,18 @@ class AlbumsFragment : Fragment(R.layout.fragment_albums) {
     }
 
     private fun syncBack() { backCb.isEnabled = adapter.editing || search.active }
+
+    /** Active tab abar tap korle top e smooth scroll */
+    fun scrollToTop() {
+        val rv = view?.findViewById<RecyclerView>(R.id.list) ?: return
+        val m = rv.layoutManager as? LinearLayoutManager ?: return
+        rv.stopScroll()
+        if (!rv.canScrollVertically(-1)) return
+        if (m.findFirstVisibleItemPosition() > 40) {
+            m.scrollToPositionWithOffset(40, 0)
+            rv.postDelayed({ rv.smoothScrollToPosition(0) }, 40)
+        } else rv.smoothScrollToPosition(0)
+    }
     private fun toast(s: String) = Toast.makeText(requireContext(), s, Toast.LENGTH_SHORT).show()
 
     override fun onViewCreated(v: View, s: Bundle?) {
@@ -94,7 +106,7 @@ class AlbumsFragment : Fragment(R.layout.fragment_albums) {
         albumList.itemAnimator = null
         ScrollAssist.attach(albumList, v.findViewById(R.id.fastScroll), v.findViewById(R.id.btnTop))
         v.findViewById<TextView>(R.id.pullTitle).useDisplay()
-        PullHeader(albumList, v.findViewById(R.id.pullHeader))
+        PullHeader(albumList, v.findViewById(R.id.pullHeader), target = v.findViewById(R.id.content))
         vm.all.observe(viewLifecycleOwner) { refresh() }
         vm.loaded.observe(viewLifecycleOwner) { refresh() }
     }

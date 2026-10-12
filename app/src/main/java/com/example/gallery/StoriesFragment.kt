@@ -30,6 +30,18 @@ class StoriesFragment : Fragment(R.layout.fragment_stories) {
 
     private fun toast(s: String) = Toast.makeText(requireContext(), s, Toast.LENGTH_SHORT).show()
 
+    /** Active tab abar tap korle top e smooth scroll */
+    fun scrollToTop() {
+        val rv = view?.findViewById<RecyclerView>(R.id.list) ?: return
+        val m = rv.layoutManager as? LinearLayoutManager ?: return
+        rv.stopScroll()
+        if (!rv.canScrollVertically(-1)) return
+        if (m.findFirstVisibleItemPosition() > 40) {
+            m.scrollToPositionWithOffset(40, 0)
+            rv.postDelayed({ rv.smoothScrollToPosition(0) }, 40)
+        } else rv.smoothScrollToPosition(0)
+    }
+
     override fun onViewCreated(v: View, s: Bundle?) {
         v.findViewById<TextView>(R.id.heading).useDisplay()
         empty = v.findViewById(R.id.empty); empty.useDisplay()
@@ -80,7 +92,7 @@ class StoriesFragment : Fragment(R.layout.fragment_stories) {
         storyList.adapter = adapter
         storyList.itemAnimator = null
         v.findViewById<TextView>(R.id.pullTitle).useDisplay()
-        PullHeader(storyList, v.findViewById(R.id.pullHeader))
+        PullHeader(storyList, v.findViewById(R.id.pullHeader), target = v.findViewById(R.id.content))
         vm.all.observe(viewLifecycleOwner) { refresh() }
         vm.loaded.observe(viewLifecycleOwner) { refresh() }
     }

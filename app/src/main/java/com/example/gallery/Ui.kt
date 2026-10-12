@@ -135,7 +135,7 @@ class SearchController(
 /** Grey bottom-sheet delete confirmation (shob jaygay ek style) */
 fun showDeleteSheet(ctx: Context, message: String, confirmLabel: String = "Delete", confirmColor: Int = 0xFFFF4D4D.toInt(), onDelete: () -> Unit) {
     val d = ctx.resources.displayMetrics.density
-    val dlg = BottomSheetDialog(ctx)
+    val dlg = BottomSheetDialog(ctx, R.style.App_BottomSheetDialog)
     val outer = FrameLayout(ctx)
     outer.setPadding((12 * d).toInt(), 0, (12 * d).toInt(), (12 * d).toInt())
     val card = LinearLayout(ctx).apply {
@@ -158,11 +158,14 @@ fun showDeleteSheet(ctx: Context, message: String, confirmLabel: String = "Delet
         setTextColor(color)
         useDisplay()
         gravity = Gravity.CENTER
-        layoutParams = LinearLayout.LayoutParams(0, (52 * d).toInt(), 1f)
+        isSingleLine = true
+        setPadding((20 * d).toInt(), 0, (20 * d).toInt(), 0)
+        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, (52 * d).toInt())
         setBackgroundResource(R.drawable.bg_press)
         setOnClickListener { dlg.dismiss(); act() }
     }
     row.addView(btn("Cancel", Color.WHITE) { })
+    row.addView(View(ctx), LinearLayout.LayoutParams(0, 1, 1f))
     row.addView(btn(confirmLabel, confirmColor) { onDelete() })
     card.addView(row)
     outer.addView(card)

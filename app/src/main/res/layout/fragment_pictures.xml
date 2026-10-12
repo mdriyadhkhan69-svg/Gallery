@@ -17,7 +17,7 @@
             android:id="@+id/back"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/bg_icon_ripple"
             android:contentDescription="Back"
             android:padding="12dp"
             android:src="@drawable/ic_arrow_back"
@@ -71,7 +71,7 @@
             android:id="@+id/btnDup"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/bg_icon_ripple"
             android:contentDescription="Duplicate images"
             android:padding="12dp"
             android:src="@drawable/ic_duplicate" />
@@ -80,7 +80,7 @@
             android:id="@+id/btnSearch"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/bg_icon_ripple"
             android:contentDescription="Search"
             android:padding="12dp"
             android:src="@drawable/ic_search"
@@ -90,7 +90,7 @@
             android:id="@+id/btnMore"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/bg_icon_ripple"
             android:contentDescription="More options"
             android:padding="12dp"
             android:src="@drawable/ic_more"
@@ -137,8 +137,8 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingStart="2dp"
-            android:paddingEnd="2dp"
+            android:paddingStart="3dp"
+            android:paddingEnd="3dp"
             android:paddingBottom="120dp" />
 
         <TextView

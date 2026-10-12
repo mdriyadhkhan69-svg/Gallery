@@ -57,8 +57,10 @@ class GalleryViewModel(app: Application) : AndroidViewModel(app) {
 
     fun publish() {
         val hidden = Prefs.getSet("hidden")
+        val locked = Prefs.getSet("locked")
         storyCache = null
-        val vis = if (hidden.isEmpty()) raw else raw.filter { it.bucketId.toString() !in hidden }
+        val vis = if (hidden.isEmpty() && locked.isEmpty()) raw
+        else raw.filter { val k = it.bucketId.toString(); k !in hidden && k !in locked }
         _all.value = vis
         scanDups(vis)
     }
@@ -145,7 +147,14 @@ class GalleryViewModel(app: Application) : AndroidViewModel(app) {
         return albumsOf(list) + custom
     }
 
-    fun rawAlbums(): List<Album> = albumsOf(raw)
+    /** Hide albums screen: locked album bad */
+    fun rawAlbums(): List<Album> {
+        val locked = Prefs.getSet("locked")
+        return albumsOf(raw.filter { it.bucketId.toString() !in locked })
+    }
+
+    /** Lock albums screen: shob album (hidden gulo shoho) */
+    fun lockableAlbums(): List<Album> = albumsOf(raw)
 
     private fun buildStories(): List<Story> {
         val all = _all.value.orEmpty()

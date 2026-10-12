@@ -91,6 +91,7 @@ class StoriesFragment : Fragment(R.layout.fragment_stories) {
         storyList.layoutManager = LinearLayoutManager(requireContext())
         storyList.adapter = adapter
         storyList.itemAnimator = null
+        v.findViewById<FastScrollView>(R.id.fastScroll).attach(storyList)
         v.findViewById<TextView>(R.id.pullTitle).useDisplay()
         PullHeader(storyList, v.findViewById(R.id.pullHeader), target = v.findViewById(R.id.content))
         vm.all.observe(viewLifecycleOwner) { refresh() }

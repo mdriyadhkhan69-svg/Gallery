@@ -79,6 +79,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        (supportFragmentManager.findFragmentByTag("tab0") as? PicturesFragment)?.applyColumns()
         if (Changes.dirty) { Changes.dirty = false; vm.publish() }
         checkAccess()
     }
@@ -167,34 +168,7 @@ class MainActivity : AppCompatActivity() {
         permission.visibility = if (ok) View.GONE else View.VISIBLE
         if (ok && vm.loaded.value != true) vm.load()
     }
-    // ---------- Settings ----------
-    private fun showSettings() {
-        val items = arrayOf("Grid columns", "Photo sort order", "Show hidden albums & stories again", "Clear all favourites", "Allow instant Recycle Bin")
-        MaterialAlertDialogBuilder(this).setTitle("Settings").setItems(items) { _, i ->
-            when (i) {
-                0 -> MaterialAlertDialogBuilder(this).setTitle("Grid columns")
-                    .setSingleChoiceItems(Array(6) { "${it + 2} columns" }, Prefs.columns - 2) { d, w ->
-                        Prefs.columns = w + 2
-                        (supportFragmentManager.findFragmentByTag("tab0") as? PicturesFragment)?.applyColumns()
-                        d.dismiss()
-                    }.show()
-                1 -> MaterialAlertDialogBuilder(this).setTitle("Photo sort order")
-                    .setSingleChoiceItems(arrayOf("Date, newest first", "Date, oldest first", "Name"), Prefs.sort) { d, w ->
-                        Prefs.sort = w; vm.publish(); d.dismiss()
-                    }.show()
-                2 -> {
-                    Prefs.setSet("hidden", emptySet()); Prefs.setSet("hiddenStories", emptySet())
-                    vm.publish()
-                    Toast.makeText(this, "Hidden albums & stories are visible again", Toast.LENGTH_SHORT).show()
-                }
-                4 -> if (Build.VERSION.SDK_INT >= 31) startActivity(Intent(Settings.ACTION_REQUEST_MANAGE_MEDIA, Uri.fromParts("package", packageName, null)))
-                else Toast.makeText(this, "Not needed on this Android version", Toast.LENGTH_SHORT).show()
-                3 -> MaterialAlertDialogBuilder(this).setMessage("Clear all favourites?")
-                    .setPositiveButton("Clear") { _, _ -> Prefs.setSet("fav", emptySet()); vm.publish() }
-                    .setNegativeButton("Cancel", null).show()
-            }
-        }.show()
-    }
+
     // ---------- Hamburger menu ----------
     private fun showMenuSheet() {
         val d = BottomSheetDialog(this)
@@ -207,8 +181,7 @@ class MainActivity : AppCompatActivity() {
             Entry(R.drawable.ic_favorite_border, "Favourites") { startActivity(GridActivity.intent(this, "fav", "", "Favourites")) },
             Entry(R.drawable.ic_video, "Videos") { startActivity(GridActivity.intent(this, "video", "", "Videos")) },
             Entry(R.drawable.ic_history, "Recent") { startActivity(GridActivity.intent(this, "recent", "", "Recent")) },
-            Entry(R.drawable.ic_delete, "Recycle Bin") { startActivity(Intent(this, TrashActivity::class.java)) },
-            Entry(R.drawable.ic_settings, "Settings") { showSettings() },
+            Entry(R.drawable.ic_delete, "Recycle Bin") { startActivity(Intent(this, TrashActivity::class.java)) },            Entry(R.drawable.ic_settings, "Settings") { startActivity(Intent(this, SettingsActivity::class.java)) },
             Entry(R.drawable.ic_info, "About") {
                 MaterialAlertDialogBuilder(this).setTitle("Gallery")
                     .setMessage("Your photos, straight from device storage.").setPositiveButton("OK", null).show()

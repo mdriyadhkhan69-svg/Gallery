@@ -489,15 +489,13 @@ class ViewerActivity : AppCompatActivity() {
 
     // ---------- More menu ----------
     private fun showMore() {
-        val labels = ArrayList<String>()
-        val acts = ArrayList<() -> Unit>()
-        labels.add("Details"); acts.add { showDetails() }
+        val acts = ArrayList<Pair<String, () -> Unit>>()
         if (!cur().video) {
-            labels.add("Rotate"); acts.add { rotateView() }
-            labels.add("Set as wallpaper"); acts.add { setWallpaper() }
+            acts.add("Rotate" to { rotateView() })
+            acts.add("Set as wallpaper" to { setWallpaper() })
         }
-        labels.add("Open with"); acts.add { openWith() }
-        showDarkMenu(btnMore, labels) { i -> acts[i]() }
+        acts.add("Open with" to { openWith() })
+        DetailsSheet.show(this, cur(), acts)
     }
 
     private fun rotateView() {
@@ -519,15 +517,6 @@ class ViewerActivity : AppCompatActivity() {
         val i = Intent(Intent.ACTION_VIEW).setDataAndType(m.uri, type).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         try { startActivity(Intent.createChooser(i, "Open with")) }
         catch (e: Exception) { Toast.makeText(this, "No app found", Toast.LENGTH_SHORT).show() }
-    }
-
-    private fun showDetails() {
-        val m = cur()
-        val date = SimpleDateFormat("EEE, d MMM yyyy, h:mm a", Locale.getDefault()).format(Date(m.date))
-        val extra = if (m.video) "\nDuration: ${fmtDuration(m.duration)}" else ""
-        MaterialAlertDialogBuilder(this).setTitle("Details")
-            .setMessage("Name: ${m.name}\nDate: $date\nResolution: ${m.w} × ${m.h}$extra\nSize: ${Formatter.formatShortFileSize(this, m.size)}\nAlbum: ${m.bucket}")
-            .setPositiveButton("OK", null).show()
     }
 
     // ---------- Recycle Bin actions ----------

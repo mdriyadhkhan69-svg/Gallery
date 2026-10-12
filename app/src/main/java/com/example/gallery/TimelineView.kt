@@ -38,8 +38,8 @@ class TimelineView @JvmOverloads constructor(c: Context, a: AttributeSet? = null
         }
 
     private val d = resources.displayMetrics.density
-    private val handleW: Float get() = if (trimEnabled) 16f * d else 0f
-    private val padV: Float get() = if (trimEnabled) 12f * d else 5f * d
+    private val handleW: Float get() = if (trimEnabled) 12f * d else 0f
+    private val padV: Float get() = if (trimEnabled) 8f * d else 5f * d
     private val radius: Float get() = if (trimEnabled) 0f else 6f * d
     private val minLen: Int get() = minOf(duration, maxOf(100, minOf(1000, duration / 2)))
 
@@ -53,7 +53,7 @@ class TimelineView @JvmOverloads constructor(c: Context, a: AttributeSet? = null
 
     private var drag = NONE
     private var grabOff = 0f
-    private val slop = 26f * d
+    private val slop = 30f * d
 
     private val clip = Path()
     private val rr = RectF()
@@ -192,19 +192,22 @@ class TimelineView @JvmOverloads constructor(c: Context, a: AttributeSet? = null
             c.drawRect(lx, t, rx, t + 2f * d, white)
             c.drawRect(lx, b - 2f * d, rx, b, white)
             rr.set(lx - hw, t, lx, b)
-            c.drawRoundRect(rr, 6f * d, 6f * d, white)
-            rr.set(lx - hw / 2 - 1.5f * d, (t + b) / 2 - 9f * d, lx - hw / 2 + 1.5f * d, (t + b) / 2 + 9f * d)
-            c.drawRoundRect(rr, 2f * d, 2f * d, grip)
+            c.drawRoundRect(rr, 4f * d, 4f * d, white)
+            rr.set(lx - hw / 2 - 1f * d, (t + b) / 2 - 6f * d, lx - hw / 2 + 1f * d, (t + b) / 2 + 6f * d)
+            c.drawRoundRect(rr, 1f * d, 1f * d, grip)
             rr.set(rx, t, rx + hw, b)
-            c.drawRoundRect(rr, 6f * d, 6f * d, white)
-            rr.set(rx + hw / 2 - 1.5f * d, (t + b) / 2 - 9f * d, rx + hw / 2 + 1.5f * d, (t + b) / 2 + 9f * d)
-            c.drawRoundRect(rr, 2f * d, 2f * d, grip)
+            c.drawRoundRect(rr, 4f * d, 4f * d, white)
+            rr.set(rx + hw / 2 - 1f * d, (t + b) / 2 - 6f * d, rx + hw / 2 + 1f * d, (t + b) / 2 + 6f * d)
+            c.drawRoundRect(rr, 1f * d, 1f * d, grip)
         }
 
         val px = xOf(posMs.coerceIn(0, duration))
-        rr.set(px - 3.5f * d, 0f, px + 3.5f * d, height.toFloat())
+        val pe = if (trimEnabled) 2.25f else 3.5f
+        val ph = if (trimEnabled) 1f else 1.75f
+        val py = if (trimEnabled) padV - 3f * d else 0f
+        rr.set(px - pe * d, py, px + pe * d, height - py)
         c.drawRoundRect(rr, 3f * d, 3f * d, edge)
-        rr.set(px - 1.75f * d, 1f * d, px + 1.75f * d, height - 1f * d)
+        rr.set(px - ph * d, py + 1f * d, px + ph * d, height - py - 1f * d)
         c.drawRoundRect(rr, 2f * d, 2f * d, white)
     }
 

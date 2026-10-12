@@ -50,8 +50,18 @@ class FastScrollView @JvmOverloads constructor(c: Context, a: AttributeSet? = nu
 
     private fun lm(): LinearLayoutManager? = rv?.layoutManager as? LinearLayoutManager
 
-    private fun trackTop() = 0f
-    private fun trackLen() = (height - hh).coerceAtLeast(1f)
+    private fun trackTop(): Float {
+        val r = rv ?: return 0f
+        val p = parent as? View ?: return 0f
+        var y = 0f
+        var v: View = r
+        while (v !== p) {
+            y += v.top
+            v = v.parent as? View ?: return 0f
+        }
+        return y
+    }
+    private fun trackLen() = ((rv?.height ?: height) - hh).coerceAtLeast(1f)
     private fun handleTop() = trackTop() + frac * trackLen()
 
     private fun sync() {
@@ -105,6 +115,11 @@ class FastScrollView @JvmOverloads constructor(c: Context, a: AttributeSet? = nu
     override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) {
         super.onSizeChanged(w, h, ow, oh)
         sync()
+    }
+
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        super.onLayout(changed, l, t, r, b)
+        if (changed) sync()
     }
 
     override fun onDetachedFromWindow() {

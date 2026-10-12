@@ -12,7 +12,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.google.android.material.materialswitch.MaterialSwitch
 
 class HideAlbumsActivity : AppCompatActivity() {
 
@@ -34,6 +33,7 @@ class HideAlbumsActivity : AppCompatActivity() {
         rv.layoutManager = LinearLayoutManager(this)
         rv.adapter = listAdapter
         rv.itemAnimator = null
+        ScrollAssist.attach(rv, findViewById(R.id.fastScroll), findViewById(R.id.btnTop))
         vm.load()
         vm.loaded.observe(this) { refresh() }
     }
@@ -48,7 +48,7 @@ class HideAlbumsActivity : AppCompatActivity() {
             val img: ImageView = v.findViewById(R.id.thumb)
             val name: TextView = v.findViewById(R.id.name)
             val count: TextView = v.findViewById(R.id.count)
-            val sw: MaterialSwitch = v.findViewById(R.id.sw)
+            val sw: CapsuleSwitch = v.findViewById(R.id.sw)
             init { name.useDisplay(); count.useDisplay(); img.roundCorners(14f) }
         }
 
@@ -62,10 +62,11 @@ class HideAlbumsActivity : AppCompatActivity() {
                 .placeholder(ColorDrawable(0xFF161616.toInt())).into(h.img)
             h.name.text = a.name
             h.count.text = countLabel(a.count, a.videos)
-            h.sw.setOnCheckedChangeListener(null)
-            h.sw.isChecked = key in hidden
+            h.sw.contentDescription = "Hide ${a.name}"
+            h.sw.onChange = null
+            h.sw.set(key in hidden, false)
             dim(h, key in hidden)
-            h.sw.setOnCheckedChangeListener { _, on ->
+            h.sw.onChange = { on ->
                 if (on) hidden.add(key) else hidden.remove(key)
                 Prefs.setSet("hidden", hidden)
                 Changes.dirty = true

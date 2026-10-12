@@ -89,12 +89,13 @@ class AlbumsFragment : Fragment(R.layout.fragment_albums) {
                     when (i) { 0 -> renameSel(); 1 -> deleteSel(); 2 -> selectAll(); 3 -> exitEdit() }
                 }
             } else {
-                showDarkMenu(it, listOf("Edit", "Select all", "Sort", "Hide albums")) { i ->
+                showDarkMenu(it, listOf("Edit", "Select all", "Sort", "Hide albums", "Lock albums")) { i ->
                     when (i) {
                         0 -> enterEdit()
                         1 -> { enterEdit(); selectAll() }
                         2 -> sortDialog()
                         3 -> HideAlbumsDialog.show(requireContext(), vm)
+                        4 -> LockFlow.open(requireActivity() as androidx.appcompat.app.AppCompatActivity)
                     }
                 }
             }

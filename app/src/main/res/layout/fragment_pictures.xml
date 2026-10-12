@@ -113,6 +113,7 @@
 
             <TextView
                 android:id="@+id/pullTitle"
+                android:gravity="center_horizontal"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:singleLine="true"
@@ -121,6 +122,7 @@
 
             <TextView
                 android:id="@+id/pullSub"
+                android:gravity="center_horizontal"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"

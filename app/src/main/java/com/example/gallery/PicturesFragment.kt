@@ -500,7 +500,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
             title.text = barTitleState
             btnSearch.setImageResource(R.drawable.ic_search); btnSearch.contentDescription = "Search"
         }
-        btnDup.visibility = if (sel || mode == "pick" || search.active) View.GONE else View.VISIBLE
+        btnDup.visibility = if (sel || mode == "pick" || mode == "album" || mode == "calbum" || search.active) View.GONE else View.VISIBLE
         btnDup.setColorFilter(if (dupMode) Colors.BLUE else Color.WHITE)
         backCb.isEnabled = sel || search.active
         previewer?.setBlocked(sel)

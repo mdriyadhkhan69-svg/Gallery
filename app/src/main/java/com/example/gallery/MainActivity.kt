@@ -221,13 +221,13 @@ class MainActivity : AppCompatActivity() {
                     gravity = Gravity.CENTER; useDisplay()
                     setPadding(0, (8 * dp).toInt(), 0, 0)
                 })
-                setBackgroundResource(R.drawable.bg_press)
+                setBackgroundResource(R.drawable.bg_menu_item)
                 setOnClickListener { d.dismiss(); e.action() }
             }
             grid.addView(cell)
         }
         d.setContentView(grid)
-        (grid.parent as View).setBackgroundResource(R.drawable.bg_sheet)
+        (grid.parent as View).setBackgroundResource(R.drawable.bg_menu_sheet)
         movePill(3, true)
         d.setOnDismissListener { movePill(current.coerceIn(0, 2), true) }
         d.show()

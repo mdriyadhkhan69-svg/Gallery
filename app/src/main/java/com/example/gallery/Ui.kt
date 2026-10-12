@@ -76,9 +76,7 @@ fun showDarkMenu(anchor: View, items: List<String>, onClick: (Int) -> Unit) {
 }
 fun confirmTrash(ctx: Context, count: Int, onYes: () -> Unit) {
     val msg = if (count == 1) "Move this item to the Recycle Bin?" else "Move $count items to the Recycle Bin?"
-    MaterialAlertDialogBuilder(ctx).setMessage(msg)
-        .setPositiveButton(if (android.os.Build.VERSION.SDK_INT >= 30) "Move to Recycle Bin" else "Delete") { _, _ -> onYes() }
-        .setNegativeButton("Cancel", null).show()
+    showDeleteSheet(ctx, msg, if (android.os.Build.VERSION.SDK_INT >= 30) "Move to Recycle Bin" else "Delete", Color.WHITE, onYes)
 }
 
 /** Naam lekhar dialog (album / story create & rename) */
@@ -135,7 +133,7 @@ class SearchController(
 }
 
 /** Grey bottom-sheet delete confirmation (shob jaygay ek style) */
-fun showDeleteSheet(ctx: Context, message: String, onDelete: () -> Unit) {
+fun showDeleteSheet(ctx: Context, message: String, confirmLabel: String = "Delete", confirmColor: Int = 0xFFFF4D4D.toInt(), onDelete: () -> Unit) {
     val d = ctx.resources.displayMetrics.density
     val dlg = BottomSheetDialog(ctx)
     val outer = FrameLayout(ctx)
@@ -165,7 +163,7 @@ fun showDeleteSheet(ctx: Context, message: String, onDelete: () -> Unit) {
         setOnClickListener { dlg.dismiss(); act() }
     }
     row.addView(btn("Cancel", Color.WHITE) { })
-    row.addView(btn("Delete", 0xFFFF4D4D.toInt()) { onDelete() })
+    row.addView(btn(confirmLabel, confirmColor) { onDelete() })
     card.addView(row)
     outer.addView(card)
     dlg.setContentView(outer)

@@ -11,6 +11,19 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <FrameLayout
+        android:id="@+id/videoHost"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0">
+
+        <com.example.gallery.VideoPlayerView
+            android:id="@+id/video"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center" />
+    </FrameLayout>
+
     <LinearLayout
         android:id="@+id/topBar"
         android:layout_width="match_parent"
@@ -39,7 +52,7 @@
             android:ellipsize="end"
             android:singleLine="true"
             android:textColor="@color/white"
-            android:textSize="16sp" />
+            android:textSize="14sp" />
 
         <ImageView
             android:id="@+id/btnPlay"
@@ -49,6 +62,7 @@
             android:contentDescription="Play slideshow"
             android:padding="16dp"
             android:src="@drawable/ic_play"
+            android:visibility="gone"
             app:tint="@color/white" />
     </LinearLayout>
 
@@ -61,10 +75,102 @@
         android:clipChildren="false"
         android:orientation="vertical">
 
+        <LinearLayout
+            android:id="@+id/videoControls"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/btnFull"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:contentDescription="Hide controls"
+                android:padding="10dp"
+                android:src="@drawable/ic_fullscreen"
+                android:visibility="invisible" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <LinearLayout
+                android:id="@+id/btnPill"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_pill_outline"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="20dp">
+
+                <ImageView
+                    android:id="@+id/btnToggle"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:contentDescription="Play"
+                    android:src="@drawable/ic_play" />
+
+                <TextView
+                    android:id="@+id/timeText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:text="00:00 / 00:00"
+                    android:textColor="@color/white"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <ImageView
+                android:id="@+id/btnMute"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_circle_outline"
+                android:contentDescription="Mute"
+                android:padding="10dp"
+                android:src="@drawable/ic_volume_on" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/timelinePanel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/btnCollapse"
+                android:layout_width="56dp"
+                android:layout_height="28dp"
+                android:layout_gravity="center_horizontal"
+                android:background="@drawable/bg_press"
+                android:contentDescription="Collapse timeline"
+                android:padding="2dp"
+                android:src="@drawable/ic_expand_more" />
+
+            <com.example.gallery.TimelineView
+                android:id="@+id/expTimeline"
+                android:layout_width="match_parent"
+                android:layout_height="76dp"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
+                android:layout_marginBottom="4dp" />
+        </LinearLayout>
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/filmstrip"
             android:layout_width="match_parent"
-            android:layout_height="88dp"
+            android:layout_height="72dp"
             android:clipChildren="false"
             android:clipToPadding="false"
             android:overScrollMode="never" />

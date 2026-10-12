@@ -293,6 +293,7 @@ class ViewerActivity : AppCompatActivity() {
         rangeEnd = 0
         scrubbing = false
         vDuration = m.duration.toInt()
+        videoHost.visibility = View.VISIBLE
         videoHost.alpha = 0f
         vplayer.muted = muted
         vplayer.load(m.uri, !playing)

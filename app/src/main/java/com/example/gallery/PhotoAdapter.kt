@@ -72,7 +72,6 @@ class PhotoAdapter(
         }
     }
 
-    /** payload thakle shudhu select UI update hoy (image abar load hoy na, drag-select smooth thake) */
     override fun onBindViewHolder(h: RecyclerView.ViewHolder, position: Int, payloads: MutableList<Any>) {
         if (payloads.isEmpty()) { onBindViewHolder(h, position); return }
         val r = getItem(position)

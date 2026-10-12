@@ -176,6 +176,7 @@
             android:overScrollMode="never" />
 
         <LinearLayout
+            android:id="@+id/actionRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
@@ -233,6 +234,42 @@
                 android:padding="14dp"
                 android:src="@drawable/ic_more"
                 app:tint="@color/white" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/trashBar"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/btnTrashRestore"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_capsule_ripple"
+                android:gravity="center"
+                android:minWidth="120dp"
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp"
+                android:text="Restore"
+                android:textColor="@color/white"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/btnTrashDelete"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:layout_marginStart="24dp"
+                android:background="@drawable/bg_capsule_ripple"
+                android:gravity="center"
+                android:minWidth="120dp"
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp"
+                android:text="Delete"
+                android:textColor="@color/white"
+                android:textSize="14sp" />
         </LinearLayout>
     </LinearLayout>
 </FrameLayout>

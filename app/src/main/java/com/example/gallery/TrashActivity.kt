@@ -1,7 +1,6 @@
 package com.example.gallery
 
 import android.content.ContentUris
-import android.content.DialogInterface
 import android.content.IntentSender
 import android.database.ContentObserver
 import android.graphics.drawable.ColorDrawable
@@ -17,6 +16,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
@@ -24,14 +24,14 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 class TrashActivity : AppCompatActivity() {
 
-    private class T(val id: Long, val uri: Uri, val video: Boolean, val expiresMs: Long)
+    private class T(val id: Long, val uri: Uri, val video: Boolean, val expiresMs: Long, val duration: Long, val name: String)
 
     private val items = ArrayList<T>()
     private val sel = HashSet<Long>()
+    private var selecting = false
     private lateinit var listAdapter: Adapter
     private lateinit var empty: TextView
     private lateinit var title: TextView
@@ -43,7 +43,11 @@ class TrashActivity : AppCompatActivity() {
     }
 
     private val launcher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
-        sel.clear(); load()
+        sel.clear(); selecting = false; load(); updateBar()
+    }
+
+    private val backCb = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() { exitSelect() }
     }
 
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
@@ -59,9 +63,14 @@ class TrashActivity : AppCompatActivity() {
         btnDelete = findViewById(R.id.btnDelete)
         val btnAll = findViewById<TextView>(R.id.btnAll)
         listOf(title, empty, btnRestore, btnDelete, btnAll).forEach { it.useDisplay() }
-        findViewById<View>(R.id.back).setOnClickListener { finish() }
+        onBackPressedDispatcher.addCallback(this, backCb)
+        findViewById<View>(R.id.back).setOnClickListener {
+            if (selecting) exitSelect() else finish()
+        }
         btnAll.setOnClickListener {
-            if (sel.size == items.size) sel.clear() else sel.addAll(items.map { it.id })
+            if (items.isEmpty()) return@setOnClickListener
+            if (sel.size == items.size) { sel.clear(); selecting = false }
+            else { sel.addAll(items.map { it.id }); selecting = true }
             listAdapter.notifyDataSetChanged(); updateBar()
         }
         btnRestore.setOnClickListener { restore() }
@@ -87,6 +96,13 @@ class TrashActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
+    private fun exitSelect() {
+        selecting = false
+        sel.clear()
+        listAdapter.notifyDataSetChanged()
+        updateBar()
+    }
+
     private fun load() {
         Thread {
             val list = query()
@@ -94,6 +110,7 @@ class TrashActivity : AppCompatActivity() {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 items.clear(); items.addAll(list)
                 sel.retainAll(items.map { it.id }.toSet())
+                if (items.isEmpty()) selecting = false
                 listAdapter.notifyDataSetChanged()
                 empty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
                 updateBar()
@@ -112,14 +129,22 @@ class TrashActivity : AppCompatActivity() {
 
     @RequiresApi(30)
     private fun collect(base: Uri, video: Boolean, out: MutableList<T>) {
-        val proj = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DATE_EXPIRES)
+        val proj = if (video) arrayOf(
+            MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DATE_EXPIRES,
+            MediaStore.MediaColumns.DISPLAY_NAME, MediaStore.Video.Media.DURATION
+        ) else arrayOf(
+            MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DATE_EXPIRES,
+            MediaStore.MediaColumns.DISPLAY_NAME
+        )
         val args = Bundle().apply { putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_ONLY) }
         try {
             contentResolver.query(base, proj, args, null)?.use { c ->
                 while (c.moveToNext()) {
                     val id = c.getLong(0)
                     val u = ContentUris.withAppendedId(base, id).buildUpon().appendQueryParameter("includeTrashed", "1").build()
-                    out.add(T(id, u, video, c.getLong(1) * 1000))
+                    val name = c.getString(2) ?: (if (video) "Video" else "Image")
+                    val dur = if (video) c.getLong(3) else 0L
+                    out.add(T(id, u, video, c.getLong(1) * 1000, dur, name))
                 }
             }
         } catch (e: Exception) {
@@ -148,12 +173,18 @@ class TrashActivity : AppCompatActivity() {
         }
     }
 
+    private fun openViewer(pos: Int) {
+        Session.items = items.map {
+            Media(it.id, it.uri, it.name, it.expiresMs, 0L, "Recycle Bin", 0L, 0, 0, it.video, it.duration)
+        }
+        startActivity(ViewerActivity.intent(this, pos, false, true))
+    }
+
     private fun updateBar() {
-        title.text = if (sel.isEmpty()) "Recycle Bin" else "${sel.size} selected"
-        val on = sel.isNotEmpty()
+        title.text = if (selecting) "${sel.size} selected" else "Recycle Bin"
+        val on = selecting && sel.isNotEmpty()
         findViewById<View>(R.id.actionBar).visibility = if (on) View.VISIBLE else View.GONE
-        btnRestore.alpha = if (on) 1f else 0.4f
-        btnDelete.alpha = if (on) 1f else 0.4f
+        backCb.isEnabled = selecting
     }
 
     private inner class Adapter : RecyclerView.Adapter<Adapter.VH>() {
@@ -161,6 +192,36 @@ class TrashActivity : AppCompatActivity() {
             val img: ImageView = v.findViewById(R.id.thumb)
             val check: ImageView = v.findViewById(R.id.check)
             val vid: View = v.findViewById(R.id.vid)
+
+            init {
+                v.setOnClickListener {
+                    val p = bindingAdapterPosition
+                    if (p == RecyclerView.NO_POSITION) return@setOnClickListener
+                    if (selecting) toggle(p) else openViewer(p)
+                }
+                check.setOnClickListener {
+                    val p = bindingAdapterPosition
+                    if (p != RecyclerView.NO_POSITION) toggle(p)
+                }
+                v.setOnLongClickListener {
+                    val p = bindingAdapterPosition
+                    if (p == RecyclerView.NO_POSITION) return@setOnLongClickListener true
+                    if (!selecting) {
+                        selecting = true
+                        sel.add(items[p].id)
+                        notifyDataSetChanged()
+                        updateBar()
+                    } else toggle(p)
+                    true
+                }
+            }
+
+            private fun toggle(p: Int) {
+                val id = items[p].id
+                if (!sel.add(id)) sel.remove(id)
+                notifyItemChanged(p)
+                updateBar()
+            }
         }
 
         override fun onCreateViewHolder(p: ViewGroup, t: Int) =
@@ -171,16 +232,9 @@ class TrashActivity : AppCompatActivity() {
             Glide.with(h.img).load(t.uri).override(400).centerCrop()
                 .placeholder(ColorDrawable(0xFF161616.toInt())).into(h.img)
             h.vid.visibility = if (t.video) View.VISIBLE else View.GONE
-            val on = t.id in sel
-            h.check.setImageResource(if (on) R.drawable.ic_check_filled else R.drawable.ic_circle)
+            h.check.visibility = if (selecting) View.VISIBLE else View.GONE
+            h.check.setImageResource(if (t.id in sel) R.drawable.ic_check_filled else R.drawable.ic_circle)
             h.check.clearColorFilter()
-            h.itemView.setOnClickListener {
-                val p = h.bindingAdapterPosition
-                if (p == RecyclerView.NO_POSITION) return@setOnClickListener
-                val id = items[p].id
-                if (!sel.add(id)) sel.remove(id)
-                notifyItemChanged(p); updateBar()
-            }
         }
 
         override fun getItemCount() = items.size

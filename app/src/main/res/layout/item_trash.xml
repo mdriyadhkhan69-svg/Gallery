@@ -12,7 +12,6 @@
         android:contentDescription="Thumbnail"
         android:scaleType="centerCrop" />
 
-
     <ImageView
         android:id="@+id/check"
         android:layout_width="22dp"
@@ -20,7 +19,8 @@
         android:layout_gravity="top|start"
         android:layout_margin="6dp"
         android:contentDescription="Select"
-        android:src="@drawable/ic_circle" />
+        android:src="@drawable/ic_circle"
+        android:visibility="gone" />
 
     <ImageView
         android:id="@+id/vid"

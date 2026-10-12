@@ -77,6 +77,7 @@ class ViewerActivity : AppCompatActivity() {
     private var barsVisible = true
     private var pending: List<Uri> = emptyList()
     private var userFilm = false
+    private var trash = false
     private var shownPos = -1
 
     private val handler = Handler(Looper.getMainLooper())
@@ -121,6 +122,15 @@ class ViewerActivity : AppCompatActivity() {
         btnPlay = findViewById(R.id.btnPlay)
         btnEdit = findViewById(R.id.btnEdit)
         btnMore = findViewById(R.id.btnMore)
+        trash = intent.getBooleanExtra("trash", false)
+        if (trash) {
+            findViewById<View>(R.id.actionRow).visibility = View.GONE
+            findViewById<View>(R.id.trashBar).visibility = View.VISIBLE
+            findViewById<TextView>(R.id.btnTrashRestore).useDisplay()
+            findViewById<TextView>(R.id.btnTrashDelete).useDisplay()
+            findViewById<View>(R.id.btnTrashRestore).setOnClickListener { trashRestore() }
+            findViewById<View>(R.id.btnTrashDelete).setOnClickListener { trashDelete() }
+        }
         pager = findViewById(R.id.pager)
         film = findViewById(R.id.filmstrip)
 
@@ -520,6 +530,29 @@ class ViewerActivity : AppCompatActivity() {
             .setPositiveButton("OK", null).show()
     }
 
+    // ---------- Recycle Bin actions ----------
+    private fun trashRestore() {
+        if (Build.VERSION.SDK_INT < 30) return
+        val u = listOf(cur().uri.buildUpon().clearQuery().build())
+        pending = u
+        vplayer.pause()
+        try {
+            deleteLauncher.launch(IntentSenderRequest.Builder(MediaStore.createTrashRequest(contentResolver, u, false).intentSender).build())
+        } catch (e: Exception) { Toast.makeText(this, "Couldn't complete the action", Toast.LENGTH_SHORT).show() }
+    }
+
+    private fun trashDelete() {
+        if (Build.VERSION.SDK_INT < 30) return
+        val u = listOf(cur().uri.buildUpon().clearQuery().build())
+        pending = u
+        showDeleteSheet(this, "Delete this item? This cannot be undone.") {
+            vplayer.pause()
+            try {
+                deleteLauncher.launch(IntentSenderRequest.Builder(MediaStore.createDeleteRequest(contentResolver, u).intentSender).build())
+            } catch (e: Exception) { Toast.makeText(this, "Couldn't complete the action", Toast.LENGTH_SHORT).show() }
+        }
+    }
+
     // ---------- Delete ----------
     private fun confirmDelete() {
         val uris = listOf(cur().uri)
@@ -588,8 +621,8 @@ class ViewerActivity : AppCompatActivity() {
     }
 
     companion object {
-        fun intent(c: Context, index: Int, slideshow: Boolean = false) =
-            Intent(c, ViewerActivity::class.java).putExtra("index", index).putExtra("slideshow", slideshow)
+        fun intent(c: Context, index: Int, slideshow: Boolean = false, trash: Boolean = false) =
+            Intent(c, ViewerActivity::class.java).putExtra("index", index).putExtra("slideshow", slideshow).putExtra("trash", trash)
     }
 }
 

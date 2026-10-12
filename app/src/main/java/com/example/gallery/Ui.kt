@@ -162,13 +162,13 @@ fun showDeleteSheet(ctx: Context, message: String, confirmLabel: String = "Delet
         useDisplay()
         gravity = Gravity.CENTER
         isSingleLine = true
-        setPadding((20 * d).toInt(), 0, (20 * d).toInt(), 0)
+        setPadding((18 * d).toInt(), 0, (18 * d).toInt(), 0)
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, (52 * d).toInt())
         setBackgroundResource(R.drawable.bg_dialog_btn)
         setOnClickListener { dlg.dismiss(); act() }
     }
     row.addView(btn("Cancel", cancelColor) { })
-    row.addView(View(ctx), LinearLayout.LayoutParams((8 * d).toInt(), 1))
+
     row.addView(btn(confirmLabel, confirmColor) { onDelete() })
     card.addView(row)
     outer.addView(card)

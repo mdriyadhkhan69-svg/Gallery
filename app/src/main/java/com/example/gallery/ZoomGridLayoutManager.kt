@@ -18,7 +18,8 @@ import kotlin.math.roundToInt
  */
 class ZoomGridLayoutManager(
     ctx: Context,
-    private val rows: () -> List<Row>
+    private val rows: () -> List<Row>,
+    private val minLevel: Int = 0
 ) : LinearLayoutManager(ctx, VERTICAL, false) {
 
     companion object {
@@ -40,7 +41,7 @@ class ZoomGridLayoutManager(
     private var anim: ValueAnimator? = null
     private val headerH = 48f * ctx.resources.displayMetrics.density
 
-    init { isItemPrefetchEnabled = false }
+    init { isItemPrefetchEnabled = false; zoom = minLevel.toFloat() }
 
     // ---------- Layout data ----------
     private fun ensure(): Boolean {
@@ -163,7 +164,7 @@ class ZoomGridLayoutManager(
 
     // ---------- Zoom ----------
     fun setLevel(l: Int) {
-        zoom = l.coerceIn(0, MAX_ZOOM).toFloat()
+        zoom = l.coerceIn(minLevel, MAX_ZOOM).toFloat()
         requestLayout()
     }
 
@@ -182,7 +183,7 @@ class ZoomGridLayoutManager(
     }
 
     fun setZoom(z: Float, fx: Float, fy: Float) {
-        val nz = z.coerceIn(0f, MAX_ZOOM.toFloat())
+        val nz = z.coerceIn(minLevel.toFloat(), MAX_ZOOM.toFloat())
         if (!ensure() || list.isNullOrEmpty()) { zoom = nz; return }
         if (nz == zoom) return
         val cx = fx.coerceIn(0f, width.toFloat())

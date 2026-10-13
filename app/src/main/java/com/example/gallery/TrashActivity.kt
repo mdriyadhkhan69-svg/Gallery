@@ -24,6 +24,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
+import android.animation.ValueAnimator
+import android.view.animation.DecelerateInterpolator
+import kotlin.math.floor
+import kotlin.math.ln
+import kotlin.math.roundToInt
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 
@@ -32,6 +37,8 @@ class TrashActivity : AppCompatActivity() {
     private class T(val id: Long, val uri: Uri, val video: Boolean, val expiresMs: Long, val duration: Long, val name: String)
 
     private val items = ArrayList<T>()
+    private var rowsList: List<Row> = emptyList()
+    private var zoomAnim: ValueAnimator? = null
     private val sel = HashSet<Long>()
     private var selecting = false
     private lateinit var listAdapter: Adapter
@@ -56,26 +63,53 @@ class TrashActivity : AppCompatActivity() {
 
     private fun trashCols(): Int = (Prefs.getStr("trashCols", "3").toIntOrNull() ?: 3).coerceIn(3, 7)
 
-    private fun setupPinch(rv: RecyclerView, glm: GridLayoutManager) {
-        var acc = 1f
+    private fun saveLevel(l: Int) { Prefs.putStr("trashCols", (l + 2).toString()) }
+
+    private fun animateZoomTo(zlm: ZoomGridLayoutManager, target: Int, fx: Float, fy: Float) {
+        zoomAnim?.cancel()
+        val t = target.coerceIn(1, ZoomGridLayoutManager.MAX_ZOOM)
+        val from = zlm.zoom
+        saveLevel(t)
+        if (Math.abs(from - t) < 0.001f) { zlm.setZoom(t.toFloat(), fx, fy); return }
+        zoomAnim = ValueAnimator.ofFloat(from, t.toFloat()).apply {
+            duration = 220
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { zlm.setZoom(it.animatedValue as Float, fx, fy) }
+            start()
+        }
+    }
+
+    private fun setupPinch(rv: RecyclerView, zlm: ZoomGridLayoutManager) {
+        var dir = 0f
+        var px = 0f
+        var py = 0f
         val sd = ScaleGestureDetector(this, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-            override fun onScaleBegin(d: ScaleGestureDetector): Boolean { acc = 1f; return true }
-            override fun onScale(d: ScaleGestureDetector): Boolean {
-                acc *= d.scaleFactor
-                val target = when {
-                    acc < 0.8f -> glm.spanCount + 1
-                    acc > 1.25f -> glm.spanCount - 1
-                    else -> return true
-                }.coerceIn(3, 7)
-                acc = 1f
-                if (target != glm.spanCount) {
-                    val first = glm.findFirstVisibleItemPosition().coerceAtLeast(0)
-                    val off = glm.findViewByPosition(first)?.top ?: 0
-                    glm.spanCount = target
-                    Prefs.putStr("trashCols", target.toString())
-                    glm.scrollToPositionWithOffset(first, off)
-                }
+            override fun onScaleBegin(d: ScaleGestureDetector): Boolean {
+                zoomAnim?.cancel()
+                rv.stopScroll()
+                dir = 0f
                 return true
+            }
+
+            override fun onScale(d: ScaleGestureDetector): Boolean {
+                val ds = -ln(d.scaleFactor) * 2.4f
+                if (ds != 0f) dir = ds
+                px = d.focusX
+                py = d.focusY
+                zlm.setZoom(zlm.zoom + ds, px, py)
+                return true
+            }
+
+            override fun onScaleEnd(d: ScaleGestureDetector) {
+                val z = zlm.zoom
+                val lo = floor(z)
+                val f = z - lo
+                val t = when {
+                    dir > 0f -> if (f > 0.3f) lo + 1f else lo
+                    dir < 0f -> if (f < 0.7f) lo else lo + 1f
+                    else -> z.roundToInt().toFloat()
+                }
+                animateZoomTo(zlm, t.toInt(), px, py)
             }
         })
         sd.isQuickScaleEnabled = false
@@ -87,7 +121,6 @@ class TrashActivity : AppCompatActivity() {
             override fun onRequestDisallowInterceptTouchEvent(disallow: Boolean) {}
         })
     }
-
     override fun onCreate(b: Bundle?) {
         Prefs.init(this)
         super.onCreate(b)
@@ -113,9 +146,10 @@ class TrashActivity : AppCompatActivity() {
         btnDelete.setOnClickListener { confirmDelete() }
         listAdapter = Adapter()
         val rv = findViewById<RecyclerView>(R.id.list)
-        val glm = GridLayoutManager(this, trashCols())
-        rv.layoutManager = glm
-        setupPinch(rv, glm)
+        val zlm = ZoomGridLayoutManager(this, { rowsList }, 1)
+        zlm.setLevel((trashCols() - 2).coerceIn(1, ZoomGridLayoutManager.MAX_ZOOM))
+        rv.layoutManager = zlm
+        setupPinch(rv, zlm)
         rv.adapter = listAdapter
         rv.itemAnimator = null
         rv.setHasFixedSize(true)
@@ -146,7 +180,9 @@ class TrashActivity : AppCompatActivity() {
             val list = query()
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
-                items.clear(); items.addAll(list)
+                rowsList = items.mapIndexed { i, t ->
+                    Row.Photo(Media(t.id, t.uri, t.name, t.expiresMs, 0L, "Recycle Bin", 0L, 0, 0, t.video, t.duration), i)
+                }
                 sel.retainAll(items.map { it.id }.toSet())
                 if (items.isEmpty()) selecting = false
                 listAdapter.notifyDataSetChanged()

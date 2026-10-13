@@ -99,12 +99,9 @@ class AlbumsFragment : Fragment(R.layout.fragment_albums) {
         btnMore.setOnClickListener {
             if (adapter.editing) {
                 val acts = ArrayList<Pair<String, () -> Unit>>()
-                if (adapter.selected.isNotEmpty()) {
-                    acts.add("Rename" to { renameSel() })
-                    acts.add("Delete" to { deleteSel() })
-                }
+                if (adapter.selected.isNotEmpty()) acts.add("Rename" to { renameSel() })
                 acts.add("Select all" to { selectAll() })
-                acts.add("Done" to { exitEdit() })
+                if (adapter.selected.isNotEmpty()) acts.add("Delete" to { deleteSel() })
                 showDarkMenu(it, acts.map { a -> a.first }) { i -> acts[i].second() }
             } else {
                 showDarkMenu(it, listOf("Edit", "Select all", "Sort", "Hide albums", "Lock albums")) { i ->

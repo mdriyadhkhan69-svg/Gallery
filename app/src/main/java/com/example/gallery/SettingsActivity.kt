@@ -149,11 +149,18 @@ class SettingsActivity : AppCompatActivity() {
         return "${m / 60}h ${m % 60}m"
     }
     private fun switchRow(title: String, desc: String, on: Boolean, onChange: (Boolean) -> Unit) {
+        val c = card
+        if (c != null && c.childCount > 0) {
+            c.addView(View(this).apply {
+                setBackgroundColor(0xFF2A2A2A.toInt())
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1)
+                    .apply { marginStart = dp(32); marginEnd = dp(32) }
+            })
+        }
         val r = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(24), dp(10), dp(12), dp(10))
-            setBackgroundResource(R.drawable.bg_press)
+            setPadding(dp(32), dp(12), dp(16), dp(12))
         }
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         col.addView(TextView(this).apply {
@@ -176,7 +183,13 @@ class SettingsActivity : AppCompatActivity() {
         sw.onChange = onChange
         r.addView(sw)
         r.setOnClickListener { sw.toggle() }
-        content.addView(r)
+        r.isClickable = true
+        r.isFocusable = true
+        r.foreground = RippleDrawable(
+            ColorStateList.valueOf(0x33FFFFFF), null,
+            GradientDrawable().apply { setColor(Color.WHITE) }
+        )
+        (card ?: content).addView(r)
     }
 
     // ---------- Build ----------

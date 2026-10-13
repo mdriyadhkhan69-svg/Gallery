@@ -81,7 +81,15 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     private val isColl get() = mode == "calbum" || mode == "ustory"
 
     private val deleter = DeleteHelper(this, { requireContext() }) { removed, _ ->
-        if (removed.isNotEmpty()) exitSelection()
+        if (::adapter.isInitialized && removed.isNotEmpty()) {
+            val gone = vm.all.value.orEmpty().filter { it.uri in removed }.map { it.id }.toSet()
+            adapter.selected.removeAll(gone)
+            if (adapter.selected.isEmpty()) exitSelection()
+            else {
+                adapter.notifyItemRangeChanged(0, adapter.itemCount, "sel")
+                updateBar()
+            }
+        }
         vm.load()
     }
 
@@ -401,6 +409,13 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         if (!::adapter.isInitialized) return
         val cids = collIds()
         val base = (vm.all.value ?: emptyList()).filter { matchesMode(it, cids) }
+        if (adapter.selecting && mode != "pick") {
+            val live = base.mapTo(HashSet()) { it.id }
+            if (adapter.selected.retainAll(live) && adapter.selected.isEmpty()) {
+                endDrag()
+                adapter.selecting = false
+            }
+        }
         subText = summary(base)
         pullSubText = countLabel(base.size, base.count { it.video }).replace(", ", " · ")
         var l = base

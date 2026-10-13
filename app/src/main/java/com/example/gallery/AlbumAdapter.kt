@@ -5,6 +5,7 @@ import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.OvershootInterpolator
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
@@ -30,6 +31,7 @@ class AlbumAdapter(
         val name: TextView = v.findViewById(R.id.name)
         val count: TextView = v.findViewById(R.id.count)
         val check: ImageView = v.findViewById(R.id.check)
+        var lastOn: Boolean? = null
         init {
             name.useDisplay(); count.useDisplay()
             img.roundCorners(14f)
@@ -67,9 +69,25 @@ class AlbumAdapter(
         h.count.text = NumberFormat.getInstance().format(a.count)
         h.check.visibility = if (editing) View.VISIBLE else View.GONE
         val on = a.id in selected
-        h.check.setImageResource(if (on) R.drawable.ic_select else R.drawable.ic_circle)
-        h.check.setColorFilter(if (on) Colors.BLUE else Colors.GRAY)
+        h.check.setImageResource(if (on) R.drawable.ic_check_filled else R.drawable.ic_circle_thin)
+        h.check.clearColorFilter()
+        h.check.animate().cancel()
+        val prev = h.lastOn
+        if (editing && prev != null && prev != on) {
+            h.check.scaleX = 0.6f
+            h.check.scaleY = 0.6f
+            h.check.animate().scaleX(1f).scaleY(1f).setDuration(220)
+                .setInterpolator(OvershootInterpolator(2.2f)).start()
+        } else {
+            h.check.scaleX = 1f
+            h.check.scaleY = 1f
+        }
+        h.lastOn = on
     }
 
-    override fun onViewRecycled(h: VH) { Glide.with(h.img).clear(h.img) }
+    override fun onViewRecycled(h: VH) {
+        Glide.with(h.img).clear(h.img)
+        h.check.animate().cancel()
+        h.lastOn = null
+    }
 }

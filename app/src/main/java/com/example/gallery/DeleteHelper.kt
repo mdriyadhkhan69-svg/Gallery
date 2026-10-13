@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.ActivityResultCaller
 import androidx.activity.result.IntentSenderRequest
@@ -16,12 +17,17 @@ class DeleteHelper(
     private val ctx: () -> Context,
     private val onDone: (removed: List<Uri>, failed: Int) -> Unit
 ) {
+    private val tag = "GalleryDbg"
+    private val chunk = 100
     private var pending: List<Uri> = emptyList()
+    private var queue: List<Uri> = emptyList()
     var quiet = false
     private var toBin = true
     private var rounds = 0
+    private var denied = false
 
     private val launcher = caller.registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { r ->
+        Log.i(tag, "authorization result ok=${r.resultCode == Activity.RESULT_OK}")
         after(r.resultCode == Activity.RESULT_OK)
     }
 
@@ -40,27 +46,53 @@ class DeleteHelper(
 
     fun begin(uris: List<Uri>, bin: Boolean) {
         pending = uris
+        queue = emptyList()
         toBin = bin
         rounds = 0
+        denied = false
         attempt(uris)
     }
 
     private fun attempt(list: List<Uri>) {
-        val sender = try { Deleter.perform(ctx(), list, toBin) } catch (e: Exception) { null }
-        if (sender != null) {
-            try {
-                launcher.launch(IntentSenderRequest.Builder(sender).build())
-                return
-            } catch (e: Exception) { }
+        var rest = list
+        while (rest.isNotEmpty()) {
+            val part = rest.take(chunk)
+            rest = rest.drop(chunk)
+            val sender = try { Deleter.perform(ctx(), part, toBin) } catch (e: Exception) {
+                Log.e(tag, "perform failed", e); null
+            }
+            if (sender != null) {
+                queue = rest
+                try {
+                    launcher.launch(IntentSenderRequest.Builder(sender).build())
+                    return
+                } catch (e: Exception) {
+                    Log.e(tag, "launch failed", e)
+                    queue = emptyList()
+                }
+            }
         }
+        queue = emptyList()
         finish()
     }
 
     private fun after(ok: Boolean) {
-        if (ok && Build.VERSION.SDK_INT < 30 && ++rounds <= pending.size) {
+        if (!ok) {
+            denied = true
+            queue = emptyList()
+            finish()
+            return
+        }
+        if (Build.VERSION.SDK_INT < 30 && ++rounds <= pending.size) {
             val c = ctx()
             val left = pending.filter { Deleter.exists(c, it) }
             if (left.isNotEmpty()) { attempt(left); return }
+        }
+        if (queue.isNotEmpty()) {
+            val q = queue
+            queue = emptyList()
+            attempt(q)
+            return
         }
         finish()
     }
@@ -72,9 +104,12 @@ class DeleteHelper(
         val verb = if (toBin) "moved" else "deleted"
         val msg = when {
             left.isEmpty() -> if (toBin) "Moved to Recycle Bin" else "Deleted"
-            removed.isEmpty() -> "Couldn't be $verb"
+            denied && removed.isEmpty() -> "Cancelled. Permission was not granted"
+            denied -> "${removed.size} $verb, ${left.size} cancelled"
+            removed.isEmpty() -> "Couldn't be $verb. Android rejected the request"
             else -> "${left.size} of ${pending.size} item(s) couldn't be $verb"
         }
+        Log.i(tag, "finish: removed=${removed.size} left=${left.size} denied=$denied")
         if (!quiet) Toast.makeText(c, msg, Toast.LENGTH_SHORT).show()
         onDone(removed, left.size)
     }

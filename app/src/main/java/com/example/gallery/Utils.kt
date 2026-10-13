@@ -82,43 +82,64 @@ fun rangeLabel(a: Long, b: Long): String {
 }
 
 object Deleter {
+    private const val TAG = "GalleryDbg"
+
     fun binAvailable() = Build.VERSION.SDK_INT >= 30
 
-    /** MediaStore e ekhono item ache kina (trashed item "nai" dhora hoy). Error hole conservative: ache dhora hoy. */
+    /** Active (non-trashed) item ache kina. Error hole conservative: ache dhora hoy. */
     fun exists(ctx: Context, u: Uri): Boolean = try {
         ctx.contentResolver.query(u, arrayOf(MediaStore.MediaColumns._ID), null, null, null)?.use { it.moveToFirst() } ?: false
     } catch (e: Exception) {
+        android.util.Log.w(TAG, "exists() failed: ${e.javaClass.simpleName}: ${e.message}")
         true
     }
 
-    /** null = ar kono authorization lagbe na (exists() diye result dekho). Non-null = system authorization er jonno launch korte hobe. */
+    private fun trashDirect(cr: android.content.ContentResolver, u: Uri): Boolean = try {
+        val v = android.content.ContentValues().apply { put(MediaStore.MediaColumns.IS_TRASHED, 1) }
+        cr.update(u, v, null, null) > 0
+    } catch (e: Exception) {
+        android.util.Log.w(TAG, "direct trash not allowed: ${e.javaClass.simpleName}: ${e.message}")
+        false
+    }
+
+    private fun deleteDirect(cr: android.content.ContentResolver, u: Uri): Boolean = try {
+        cr.delete(u, null, null) > 0
+    } catch (e: Exception) {
+        android.util.Log.w(TAG, "direct delete not allowed: ${e.javaClass.simpleName}: ${e.message}")
+        false
+    }
+
+    /** null = ar kono authorization lagbe na. Non-null = system authorization launch korte hobe. */
     fun perform(ctx: Context, uris: List<Uri>, toBin: Boolean): IntentSender? {
         val cr = ctx.contentResolver
         var todo = uris.filter { exists(ctx, it) }
         if (todo.isEmpty()) return null
-        if (Build.VERSION.SDK_INT >= 31 && MediaStore.canManageMedia(ctx)) {
+
+        if (Build.VERSION.SDK_INT >= 30) {
             todo = todo.filter { u ->
-                val ok = try {
-                    if (toBin) cr.update(u, android.content.ContentValues().apply { put(MediaStore.MediaColumns.IS_TRASHED, 1) }, null, null) > 0
-                    else cr.delete(u, null, null) > 0
-                } catch (e: Exception) {
-                    false
-                }
+                val ok = if (toBin) trashDirect(cr, u) else deleteDirect(cr, u)
                 !ok || exists(ctx, u)
             }
             if (todo.isEmpty()) return null
+            return try {
+                if (toBin) MediaStore.createTrashRequest(cr, todo, true).intentSender
+                else MediaStore.createDeleteRequest(cr, todo).intentSender
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "system request failed (${todo.size} items)", e)
+                null
+            }
         }
-        if (Build.VERSION.SDK_INT >= 30) {
-            return if (toBin) MediaStore.createTrashRequest(cr, todo, true).intentSender
-            else MediaStore.createDeleteRequest(cr, todo).intentSender
-        }
+
         for (u in todo) {
             try {
                 cr.delete(u, null, null)
             } catch (e: SecurityException) {
+                android.util.Log.w(TAG, "legacy delete denied: ${e.javaClass.simpleName}")
                 if (Build.VERSION.SDK_INT >= 29 && e is RecoverableSecurityException) {
                     return e.userAction.actionIntent.intentSender
                 }
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "legacy delete failed", e)
             }
         }
         return null

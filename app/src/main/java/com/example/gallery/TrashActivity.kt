@@ -180,6 +180,8 @@ class TrashActivity : AppCompatActivity() {
             val list = query()
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
+                items.clear()
+                items.addAll(list)
                 rowsList = items.mapIndexed { i, t ->
                     Row.Photo(Media(t.id, t.uri, t.name, t.expiresMs, 0L, "Recycle Bin", 0L, 0, 0, t.video, t.duration), i)
                 }

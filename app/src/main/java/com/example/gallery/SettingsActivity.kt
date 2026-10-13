@@ -184,6 +184,36 @@ class SettingsActivity : AppCompatActivity() {
         val m = LockReset.duration() / 60_000L
         return "${m / 60}h ${m % 60}m"
     }
+    private fun switchRow(title: String, desc: String, on: Boolean, onChange: (Boolean) -> Unit) {
+        val r = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(24), dp(10), dp(12), dp(10))
+            setBackgroundResource(R.drawable.bg_press)
+        }
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        col.addView(TextView(this).apply {
+            text = title
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            useDisplay()
+        })
+        col.addView(TextView(this).apply {
+            text = desc
+            textSize = 13f
+            setTextColor(Colors.GRAY)
+            useDisplay()
+            setPadding(0, dp(2), dp(12), 0)
+        })
+        r.addView(col, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        val sw = CapsuleSwitch(this)
+        sw.contentDescription = title
+        sw.set(on, false)
+        sw.onChange = onChange
+        r.addView(sw)
+        r.setOnClickListener { sw.toggle() }
+        content.addView(r)
+    }
 
     // ---------- Build ----------
     private fun build(animate: Boolean) {
@@ -216,7 +246,12 @@ class SettingsActivity : AppCompatActivity() {
             "Swipe horizontally to move between Pictures, Albums, and Stories.",
             Prefs.swipeNav
         ) { Prefs.swipeNav = it }
-
+        section("Albums")
+        switchRow(
+            "Move deleted album media to Recover Images",
+            "OFF: deleting an album sends its media to the Recycle Bin. ON: its media goes to the Recover Images album instead.",
+            Prefs.albumToRecover
+        ) { Prefs.albumToRecover = it }
         section("Favourites")
         row("Clear all favourites", "Remove the heart from every photo and story") {
             MaterialAlertDialogBuilder(this).setMessage("Clear all favourites?")

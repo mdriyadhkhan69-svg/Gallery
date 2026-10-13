@@ -30,6 +30,10 @@ class AlbumsFragment : Fragment(R.layout.fragment_albums) {
     private lateinit var heading: TextView
     private var query = ""
     private var current: List<Album> = emptyList()
+    private var pendingMedia: List<Media> = emptyList()
+    private var pendingRec: Long? = null
+    private val deleter = DeleteHelper(this, { requireContext() }) { removed, failed -> afterAlbumTrash(removed, failed) }
+        .apply { quiet = true }
 
     private val backCb = object : OnBackPressedCallback(false) {
         override fun handleOnBackPressed() {
@@ -73,7 +77,13 @@ class AlbumsFragment : Fragment(R.layout.fragment_albums) {
                 val mode = if (isCustomId(a.id)) "calbum" else "album"
                 startActivity(GridActivity.intent(requireContext(), mode, a.id.toString(), a.name))
             },
-            onSelectChanged = { updateHeading() }
+            onSelectChanged = { updateHeading() },
+            onLong = { a ->
+                if (!adapter.editing) enterEdit()
+                adapter.selected.add(a.id)
+                adapter.notifyDataSetChanged()
+                updateHeading()
+            }
         )
 
         btnAdd.setOnClickListener {
@@ -88,9 +98,14 @@ class AlbumsFragment : Fragment(R.layout.fragment_albums) {
         }
         btnMore.setOnClickListener {
             if (adapter.editing) {
-                showDarkMenu(it, listOf("Rename", "Delete", "Select all", "Done")) { i ->
-                    when (i) { 0 -> renameSel(); 1 -> deleteSel(); 2 -> selectAll(); 3 -> exitEdit() }
+                val acts = ArrayList<Pair<String, () -> Unit>>()
+                if (adapter.selected.isNotEmpty()) {
+                    acts.add("Rename" to { renameSel() })
+                    acts.add("Delete" to { deleteSel() })
                 }
+                acts.add("Select all" to { selectAll() })
+                acts.add("Done" to { exitEdit() })
+                showDarkMenu(it, acts.map { a -> a.first }) { i -> acts[i].second() }
             } else {
                 showDarkMenu(it, listOf("Edit", "Select all", "Sort", "Hide albums", "Lock albums")) { i ->
                     when (i) {
@@ -150,20 +165,80 @@ class AlbumsFragment : Fragment(R.layout.fragment_albums) {
     }
 
     private fun deleteSel() {
-        val ids = adapter.selected.filter { isCustomId(it) }
-        if (ids.isEmpty()) { toast("Only albums you created can be deleted here"); return }
-        MaterialAlertDialogBuilder(requireContext())
-            .setMessage("Delete ${ids.size} album(s)? Photos will NOT be deleted.")
-            .setPositiveButton("Delete") { _, _ ->
-                ids.forEach { CustomAlbums.delete(it) }
-                exitEdit(); vm.publish()
-            }.setNegativeButton("Cancel", null).show()
+        val ids = adapter.selected.toList()
+        if (ids.isEmpty()) return
+        val toRecover = Prefs.albumToRecover
+        val where = if (toRecover) "Recover Images" else "the Recycle Bin"
+        val msg = (if (ids.size == 1) "Delete this album?" else "Delete ${ids.size} albums?") +
+                " Their photos and videos will be moved to $where."
+        showDeleteSheet(requireContext(), msg, "Delete") { runAlbumDelete(ids, toRecover) }
+    }
+
+    private fun mediaWord(l: Collection<Media>): String {
+        val v = l.count { it.video }
+        return when {
+            v == 0 -> "images"
+            v == l.size -> "videos"
+            else -> "images and videos"
+        }
+    }
+
+    private fun runAlbumDelete(ids: List<Long>, toRecover: Boolean) {
+        val all = vm.all.value.orEmpty()
+        val media = LinkedHashMap<Long, Media>()
+        val recId = CustomAlbums.all().firstOrNull { it.name == RECOVER_NAME }?.id
+        for (id in ids) {
+            if (!isCustomId(id)) all.filter { it.bucketId == id }.forEach { media[it.id] = it }
+            else if (id == recId) {
+                if (!toRecover) {
+                    val s = CustomAlbums.get(id)?.ids ?: emptySet()
+                    all.filter { it.id in s }.forEach { media[it.id] = it }
+                }
+            } else CustomAlbums.delete(id)
+        }
+        if (toRecover) {
+            if (media.isNotEmpty()) {
+                val rid = recId ?: CustomAlbums.create(RECOVER_NAME, emptyList())
+                CustomAlbums.add(rid, media.keys)
+                Prefs.setSet("albumGone", Prefs.getSet("albumGone") + media.keys.map { it.toString() })
+                toast("Your ${mediaWord(media.values)} have been moved to Recover Images")
+            }
+            exitEdit()
+            vm.publish()
+            return
+        }
+        if (media.isEmpty()) { exitEdit(); vm.publish(); return }
+        if (!Deleter.binAvailable()) {
+            toast("Recycle Bin needs Android 11+. Turn on Recover Images in Settings.")
+            return
+        }
+        pendingMedia = media.values.toList()
+        pendingRec = if (recId != null && recId in ids) recId else null
+        deleter.begin(pendingMedia.map { it.uri }, true)
+    }
+
+    private fun afterAlbumTrash(removed: List<android.net.Uri>, failed: Int) {
+        val done = pendingMedia.filter { it.uri in removed }
+        val rec = pendingRec
+        pendingMedia = emptyList()
+        pendingRec = null
+        exitEdit()
+        when {
+            done.isEmpty() -> toast("Couldn't move to Recycle Bin")
+            failed == 0 -> {
+                rec?.let { CustomAlbums.delete(it) }
+                toast("Your ${mediaWord(done)} have been moved to Recycle Bin")
+            }
+            else -> toast("${done.size} moved, $failed couldn't be moved")
+        }
+        vm.load()
     }
 
     // ---------- List ----------
     private fun refresh() {
         if (!::adapter.isInitialized) return
         var l = vm.albums()
+        l = l.filter { !(it.name == RECOVER_NAME && isCustomId(it.id) && it.count == 0) }
         if (query.isNotBlank()) l = l.filter { it.name.contains(query.trim(), true) }
         l = when (Prefs.albumSort) {
             1 -> l.sortedBy { it.name.lowercase() }

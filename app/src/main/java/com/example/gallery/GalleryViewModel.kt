@@ -144,7 +144,8 @@ class GalleryViewModel(app: Application) : AndroidViewModel(app) {
             if (cover == null) Album(c.id, c.name, 0, Uri.EMPTY, 0L)
             else Album(c.id, c.name, m.size, cover.uri, m.first().date, m.count { it.video })
         }
-        return albumsOf(list) + custom
+        val gone = Prefs.getSet("albumGone")
+        return albumsOf(if (gone.isEmpty()) list else list.filter { it.id.toString() !in gone }) + custom
     }
 
     /** Hide albums screen: locked album bad */

@@ -15,7 +15,8 @@ import java.text.NumberFormat
 
 class AlbumAdapter(
     private val onClick: (Album) -> Unit,
-    private val onSelectChanged: () -> Unit
+    private val onSelectChanged: () -> Unit,
+    private val onLong: (Album) -> Unit
 ) : ListAdapter<Album, AlbumAdapter.VH>(object : DiffUtil.ItemCallback<Album>() {
     override fun areItemsTheSame(a: Album, b: Album) = a.id == b.id
     override fun areContentsTheSame(a: Album, b: Album) = a == b
@@ -41,6 +42,11 @@ class AlbumAdapter(
                     notifyItemChanged(p)
                     onSelectChanged()
                 } else onClick(a)
+            }
+            v.setOnLongClickListener {
+                val p = bindingAdapterPosition
+                if (p != RecyclerView.NO_POSITION) onLong(getItem(p))
+                true
             }
         }
     }

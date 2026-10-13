@@ -13,6 +13,8 @@ object Changes { @Volatile var dirty = false }
 /** Custom album id hocche -currentTimeMillis (Int range er baire). Device bucket id Int range er moddhe, negative-o hote pare. */
 fun isCustomId(id: Long): Boolean = id < Int.MIN_VALUE.toLong()
 
+const val RECOVER_NAME = "Recover Images"
+
 class CollStore(private val key: String) {
 
     fun all(): MutableList<Coll> {

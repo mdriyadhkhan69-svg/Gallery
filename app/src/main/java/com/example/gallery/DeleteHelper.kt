@@ -17,6 +17,7 @@ class DeleteHelper(
     private val onDone: (removed: List<Uri>, failed: Int) -> Unit
 ) {
     private var pending: List<Uri> = emptyList()
+    var quiet = false
     private var toBin = true
     private var rounds = 0
 
@@ -37,7 +38,7 @@ class DeleteHelper(
         }
     }
 
-    private fun begin(uris: List<Uri>, bin: Boolean) {
+    fun begin(uris: List<Uri>, bin: Boolean) {
         pending = uris
         toBin = bin
         rounds = 0
@@ -74,7 +75,7 @@ class DeleteHelper(
             removed.isEmpty() -> "Couldn't be $verb"
             else -> "${left.size} of ${pending.size} item(s) couldn't be $verb"
         }
-        Toast.makeText(c, msg, Toast.LENGTH_SHORT).show()
+        if (!quiet) Toast.makeText(c, msg, Toast.LENGTH_SHORT).show()
         onDone(removed, left.size)
     }
 }

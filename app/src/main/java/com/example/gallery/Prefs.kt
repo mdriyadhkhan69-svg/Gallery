@@ -29,6 +29,9 @@ object Prefs {
     var useBin: Boolean   // true = Move to Recycle Bin, false = delete permanently
         get() = sp.getBoolean("useBin", true)
         set(v) = sp.edit().putBoolean("useBin", v).apply()
+    var albumToRecover: Boolean   // false = album delete -> Recycle Bin, true = album delete -> Recover Images
+        get() = sp.getBoolean("albumToRecover", false)
+        set(v) = sp.edit().putBoolean("albumToRecover", v).apply()
     var swipeNav: Boolean   // true = swipe between Pictures / Albums / Stories
         get() = sp.getBoolean("swipeNav", true)
         set(v) = sp.edit().putBoolean("swipeNav", v).apply()

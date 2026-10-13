@@ -388,7 +388,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     }
 
     private fun matchesMode(m: Media, cids: Set<Long>?): Boolean = when (mode) {
-        "album" -> m.bucketId.toString() == param
+        "album" -> m.bucketId.toString() == param && !Prefs.has("albumGone", m.id.toString())
         "calbum", "ustory" -> cids != null && m.id in cids
         "fav" -> Prefs.has("fav", "p${m.id}")
         "recent" -> m.date > System.currentTimeMillis() - 30L * 86_400_000L

@@ -59,7 +59,7 @@ class ZoomGridLayoutManager(
     private fun asp(r: Row): Float {
         val m = (r as Row.Photo).m
         val a = if (m.w > 0 && m.h > 0) m.w.toFloat() / m.h else 1f
-        return a.coerceIn(0.6f, 1.8f)
+        return a.coerceIn(0.7f, 1.6f)
     }
 
     private fun put(o: FloatArray, i: Int, x: Float, y: Float, w: Float, h: Float) {
@@ -98,15 +98,10 @@ class ZoomGridLayoutManager(
         val target = gw / 3f
         var a = s
         while (a < e) {
+            val b = minOf(a + 3, e)
             var sum = 0f
-            var b = a
-            while (b < e) {
-                sum += asp(l[b])
-                b++
-                if (sum * target >= gw) break
-            }
-            val full = sum * target >= gw
-            val h = if (full) gw / sum else target
+            for (k in a until b) sum += asp(l[k])
+            val h = minOf(gw / sum, target * 1.6f).let { if (b - a == 3) gw / sum else minOf(it, target) }
             var x = px
             for (k in a until b) {
                 val w = asp(l[k]) * h

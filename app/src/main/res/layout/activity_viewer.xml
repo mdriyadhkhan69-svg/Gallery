@@ -81,18 +81,18 @@
             android:layout_height="56dp"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
             android:visibility="gone">
 
             <ImageView
                 android:id="@+id/btnFull"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_ctrl_circle"
                 android:contentDescription="Hide controls"
-                android:padding="10dp"
-                android:src="@drawable/ic_fullscreen"
-                android:visibility="invisible" />
+                android:padding="15dp"
+                android:src="@drawable/ic_fullscreen" />
 
             <View
                 android:layout_width="0dp"
@@ -102,17 +102,18 @@
             <LinearLayout
                 android:id="@+id/btnPill"
                 android:layout_width="wrap_content"
-                android:layout_height="40dp"
-                android:background="@drawable/bg_circle_outline_clear"
-                android:gravity="center_vertical"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_ctrl_pill"
+                android:gravity="center"
+                android:minWidth="132dp"
                 android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingEnd="20dp">
+                android:paddingStart="14dp"
+                android:paddingEnd="18dp">
 
                 <ImageView
                     android:id="@+id/btnToggle"
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:contentDescription="Play"
                     android:src="@drawable/ic_play" />
 
@@ -120,7 +121,9 @@
                     android:id="@+id/timeText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
+                    android:layout_marginStart="10dp"
+                    android:includeFontPadding="false"
+                    android:singleLine="true"
                     android:text="00:00 / 00:00"
                     android:textColor="@color/white"
                     android:textSize="13sp" />
@@ -133,11 +136,11 @@
 
             <ImageView
                 android:id="@+id/btnMute"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="@drawable/bg_pill_outline_clear"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_ctrl_circle"
                 android:contentDescription="Mute"
-                android:padding="10dp"
+                android:padding="15dp"
                 android:src="@drawable/ic_volume_on" />
         </LinearLayout>
 

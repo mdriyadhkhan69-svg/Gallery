@@ -27,8 +27,6 @@ class DupGroupActivity : AppCompatActivity() {
     private val sel = HashSet<Long>()
     private var cur = 0
     private var keepId = 0L
-    private var pending: List<Uri> = emptyList()
-    private var pendingIds: Set<Long> = emptySet()
 
     private lateinit var preview: ImageView
     private lateinit var playBadge: View
@@ -40,11 +38,8 @@ class DupGroupActivity : AppCompatActivity() {
     private lateinit var stripAdapter: Strip
     private lateinit var btnDelete: ImageView
 
-    private val deleteLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { r ->
-        if (r.resultCode == Activity.RESULT_OK) {
-            if (Build.VERSION.SDK_INT < 30) Deleter.delete(this, pending)
-            removeIds(pendingIds)
-        }
+    private val deleter = DeleteHelper(this, { this }) { removed, _ ->
+        if (removed.isNotEmpty()) removeIds(items.filter { it.uri in removed }.map { it.id }.toSet())
     }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
@@ -159,13 +154,7 @@ class DupGroupActivity : AppCompatActivity() {
         val chosen = items.filter { it.id in sel }
         if (chosen.isEmpty()) { toast("Select items first"); return }
         if (chosen.size >= items.size) { toast("Keep at least one copy"); return }
-        pending = chosen.map { it.uri }
-        pendingIds = chosen.map { it.id }.toSet()
-        confirmTrash(this, chosen.size) {
-            val sender = Deleter.delete(this, pending)
-            if (sender != null) deleteLauncher.launch(IntentSenderRequest.Builder(sender).build())
-            else removeIds(pendingIds)
-        }
+        deleter.confirmAndDelete(chosen.map { it.uri })
     }
 
     private fun removeIds(ids: Set<Long>) {

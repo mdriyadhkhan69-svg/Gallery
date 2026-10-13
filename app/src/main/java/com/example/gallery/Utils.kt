@@ -82,27 +82,37 @@ fun rangeLabel(a: Long, b: Long): String {
 }
 
 object Deleter {
-    /** IntentSender return korle user confirmation lagbe (launch korte hobe). null hole direct delete hoyeche. */
-    fun delete(ctx: Context, uris: List<Uri>): IntentSender? {
+    fun binAvailable() = Build.VERSION.SDK_INT >= 30
+
+    /** MediaStore e ekhono item ache kina (trashed item "nai" dhora hoy). Error hole conservative: ache dhora hoy. */
+    fun exists(ctx: Context, u: Uri): Boolean = try {
+        ctx.contentResolver.query(u, arrayOf(MediaStore.MediaColumns._ID), null, null, null)?.use { it.moveToFirst() } ?: false
+    } catch (e: Exception) {
+        true
+    }
+
+    /** null = ar kono authorization lagbe na (exists() diye result dekho). Non-null = system authorization er jonno launch korte hobe. */
+    fun perform(ctx: Context, uris: List<Uri>, toBin: Boolean): IntentSender? {
         val cr = ctx.contentResolver
-        var todo = uris
+        var todo = uris.filter { exists(ctx, it) }
+        if (todo.isEmpty()) return null
         if (Build.VERSION.SDK_INT >= 31 && MediaStore.canManageMedia(ctx)) {
-            val cv = android.content.ContentValues().apply { put(MediaStore.MediaColumns.IS_TRASHED, 1) }
-            todo = uris.filter { u ->
+            todo = todo.filter { u ->
                 val ok = try {
-                    cr.update(MediaStore.setRequireOriginal(u), cv, null, null) > 0
+                    if (toBin) cr.update(u, android.content.ContentValues().apply { put(MediaStore.MediaColumns.IS_TRASHED, 1) }, null, null) > 0
+                    else cr.delete(u, null, null) > 0
                 } catch (e: Exception) {
-                    android.util.Log.e("GalleryDbg", "silent trash failed: $u", e)
                     false
                 }
-                !ok
+                !ok || exists(ctx, u)
             }
             if (todo.isEmpty()) return null
-        } else {
-            android.util.Log.d("GalleryDbg", "canManageMedia=" + (Build.VERSION.SDK_INT >= 31 && MediaStore.canManageMedia(ctx)))
         }
-        if (Build.VERSION.SDK_INT >= 30) return MediaStore.createTrashRequest(cr, todo, true).intentSender
-        for (u in uris) {
+        if (Build.VERSION.SDK_INT >= 30) {
+            return if (toBin) MediaStore.createTrashRequest(cr, todo, true).intentSender
+            else MediaStore.createDeleteRequest(cr, todo).intentSender
+        }
+        for (u in todo) {
             try {
                 cr.delete(u, null, null)
             } catch (e: SecurityException) {
@@ -113,6 +123,8 @@ object Deleter {
         }
         return null
     }
+
+    fun delete(ctx: Context, uris: List<Uri>): IntentSender? = perform(ctx, uris, binAvailable())
 }
 
 object Share {

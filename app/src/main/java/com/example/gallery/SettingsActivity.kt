@@ -143,7 +143,43 @@ class SettingsActivity : AppCompatActivity() {
             )
         }
     }
-
+    private fun switchRow(title: String, desc: String, on: Boolean, onChange: (Boolean) -> Unit) {
+        val c = card ?: return
+        if (c.childCount > 0) {
+            c.addView(View(this).apply {
+                setBackgroundColor(0xFF2A2A2A.toInt())
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1)
+                    .apply { marginStart = dp(32); marginEnd = dp(32) }
+            })
+        }
+        val r = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(32), dp(12), dp(16), dp(12))
+        }
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        col.addView(TextView(this).apply {
+            text = title
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            useDisplay()
+        })
+        col.addView(TextView(this).apply {
+            text = desc
+            textSize = 13f
+            setTextColor(Colors.GRAY)
+            useDisplay()
+            setPadding(0, dp(2), dp(12), 0)
+        })
+        r.addView(col, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        val sw = CapsuleSwitch(this)
+        sw.contentDescription = title
+        sw.set(on, false)
+        sw.onChange = onChange
+        r.addView(sw)
+        r.setOnClickListener { sw.toggle() }
+        c.addView(r)
+    }
     private fun durLabel(): String {
         val m = LockReset.duration() / 60_000L
         return "${m / 60}h ${m % 60}m"
@@ -187,13 +223,19 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         section("Storage")
+        switchRow(
+            "Move to Recycle Bin",
+            if (Deleter.binAvailable()) "Choose whether deleted items go to the Recycle Bin or are permanently deleted."
+            else "Not available on this Android version. Items are deleted permanently.",
+            Prefs.useBin && Deleter.binAvailable()
+        ) { Prefs.useBin = it }
         if (Build.VERSION.SDK_INT >= 31) {
             val on = MediaStore.canManageMedia(this)
-            row("Instant Recycle Bin", if (on) "On · items move to the Recycle Bin without an extra prompt" else "Off · tap to allow") {
+            row("Skip system prompt", if (on) "On · deleting or moving media needs no extra system prompt" else "Off · tap to allow") {
                 startActivity(Intent(Settings.ACTION_REQUEST_MANAGE_MEDIA, Uri.fromParts("package", packageName, null)))
             }
         } else {
-            row("Instant Recycle Bin", "Not needed on this Android version", null)
+            row("Skip system prompt", "Not needed on this Android version", null)
         }
 
         if (LockReset.resetVisible()) {

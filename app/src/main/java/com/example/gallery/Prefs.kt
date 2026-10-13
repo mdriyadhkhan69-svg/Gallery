@@ -26,6 +26,9 @@ object Prefs {
         get() = sp.getInt("albumSort", 0)
         set(v) = sp.edit().putInt("albumSort", v).apply()
 
+    var useBin: Boolean   // true = Move to Recycle Bin, false = delete permanently
+        get() = sp.getBoolean("useBin", true)
+        set(v) = sp.edit().putBoolean("useBin", v).apply()
     fun getSet(k: String): Set<String> = HashSet(sp.getStringSet(k, emptySet())!!)
     fun setSet(k: String, s: Set<String>) = sp.edit().putStringSet(k, HashSet(s)).apply()
     fun has(k: String, v: String): Boolean = sp.getStringSet(k, emptySet())!!.contains(v)

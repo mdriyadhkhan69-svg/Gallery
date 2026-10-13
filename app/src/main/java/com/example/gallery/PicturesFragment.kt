@@ -47,7 +47,6 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
 
     private var items: List<Media> = emptyList()
     private var query = ""
-    private var pendingDelete: List<Uri> = emptyList()
     private var barTitleState = ""
     private lateinit var sub: TextView
     private var subText = ""
@@ -81,11 +80,9 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     private val store get() = if (mode == "ustory") CustomStories else CustomAlbums
     private val isColl get() = mode == "calbum" || mode == "ustory"
 
-    private val deleteLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { r ->
-        if (r.resultCode == Activity.RESULT_OK) {
-            if (Build.VERSION.SDK_INT < 30) Deleter.delete(requireContext(), pendingDelete)
-            exitSelection(); vm.load()
-        }
+    private val deleter = DeleteHelper(this, { requireContext() }) { removed, _ ->
+        if (removed.isNotEmpty()) exitSelection()
+        vm.load()
     }
 
     private val backCb = object : OnBackPressedCallback(false) {
@@ -629,15 +626,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     private fun confirmDelete() {
         val uris = selectedUris()
         if (uris.isEmpty()) { toast("Select photos first"); return }
-        pendingDelete = uris
-        val go = {
-            val sender = Deleter.delete(requireContext(), uris)
-            if (sender != null) deleteLauncher.launch(IntentSenderRequest.Builder(sender).build())
-            else { exitSelection(); vm.load() }
-        }
-        if (Build.VERSION.SDK_INT >= 30) go()
-        else MaterialAlertDialogBuilder(requireContext()).setMessage("Delete ${uris.size} item(s)?")
-            .setPositiveButton("Delete") { _, _ -> go() }.setNegativeButton("Cancel", null).show()
+        deleter.confirmAndDelete(uris)
     }
 
     // ---------- Dialogs ----------

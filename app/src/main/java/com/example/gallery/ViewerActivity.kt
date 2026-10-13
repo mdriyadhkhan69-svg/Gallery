@@ -106,7 +106,9 @@ class ViewerActivity : AppCompatActivity() {
         val u = r.data?.data
         if (r.resultCode == Activity.RESULT_OK && u != null) insertEdited(u)
     }
-
+    private val deleter = DeleteHelper(this, { this }) { removed, _ ->
+        if (removed.isNotEmpty()) removeCurrent()
+    }
     private fun dp(v: Float) = (v * resources.displayMetrics.density).toInt()
 
     override fun onCreate(b: Bundle?) {
@@ -587,17 +589,8 @@ class ViewerActivity : AppCompatActivity() {
 
     // ---------- Delete ----------
     private fun confirmDelete() {
-        val uris = listOf(cur().uri)
-        pending = uris
-        val go = {
-            vplayer.pause()
-            val sender = Deleter.delete(this, uris)
-            if (sender != null) deleteLauncher.launch(IntentSenderRequest.Builder(sender).build())
-            else removeCurrent()
-        }
-        confirmTrash(this, 1) { go() }
+        deleter.confirmAndDelete(listOf(cur().uri), onConfirm = { vplayer.pause() })
     }
-
     private fun removeCurrent() {
         val p = pager.currentItem
         items.removeAt(p)

@@ -23,6 +23,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
+import android.graphics.drawable.GradientDrawable
 
 object DetailsSheet {
 
@@ -203,56 +204,92 @@ object DetailsSheet {
 
     private fun display(act: AppCompatActivity, rows: List<Pair<String, String>>, actions: List<Pair<String, () -> Unit>>) {
         val d = act.resources.displayMetrics.density
+        fun px(v: Int) = (v * d).toInt()
         val dlg = BottomSheetDialog(act, R.style.App_BottomSheetDialog)
 
         val card = LinearLayout(act).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundResource(R.drawable.bg_menu_sheet)
-            minimumHeight = (act.resources.displayMetrics.heightPixels * 0.55f).toInt()
-            setPadding(0, (12 * d).toInt(), 0, (24 * d).toInt())
+            setPadding(0, px(12), 0, px(24))
         }
-
         card.addView(View(act).apply {
             setBackgroundColor(0x55FFFFFF)
-            layoutParams = LinearLayout.LayoutParams((36 * d).toInt(), (4 * d).toInt()).apply {
+            layoutParams = LinearLayout.LayoutParams(px(36), px(4)).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
-                bottomMargin = (16 * d).toInt()
+                bottomMargin = px(16)
             }
         })
-
         card.addView(TextView(act).apply {
             text = "Details"
             textSize = 20f
             setTextColor(Color.WHITE)
             useDisplay()
-            setPadding((24 * d).toInt(), 0, (24 * d).toInt(), (12 * d).toInt())
+            setPadding(px(24), 0, px(24), px(4))
         })
 
         val list = LinearLayout(act).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding((24 * d).toInt(), 0, (24 * d).toInt(), 0)
+            setPadding(px(16), 0, px(16), 0)
         }
-        rows.forEach { (k, v) ->
+
+        val fileKeys = listOf("Name", "Type", "Size", "Resolution", "Duration")
+        val dateKeys = listOf("Captured", "Recorded", "Added to device", "Last modified")
+        val placeKeys = listOf("Album", "Location")
+        val known = fileKeys + dateKeys + placeKeys
+        val cameraRows = rows.filter { it.first !in known }
+
+        fun section(title: String, items: List<Pair<String, String>>) {
+            if (items.isEmpty()) return
             list.addView(TextView(act).apply {
-                text = k
-                textSize = 12f
-                setTextColor(0xFF8A8A8A.toInt())
+                text = title
+                textSize = 13f
+                setTextColor(Colors.BLUE)
                 useDisplay()
-                setPadding(0, (12 * d).toInt(), 0, 0)
+                setPadding(px(8), px(18), 0, px(8))
             })
-            list.addView(TextView(act).apply {
-                text = v
-                textSize = 15f
-                setTextColor(Color.WHITE)
-                useDisplay()
-                setTextIsSelectable(true)
-                setPadding(0, (2 * d).toInt(), 0, 0)
-            })
+            val box = LinearLayout(act).apply {
+                orientation = LinearLayout.VERTICAL
+                background = GradientDrawable().apply { setColor(0xFF262626.toInt()); cornerRadius = 18 * d }
+                setPadding(px(16), px(4), px(16), px(4))
+            }
+            items.forEachIndexed { i, (k, v) ->
+                if (i > 0) box.addView(View(act).apply {
+                    setBackgroundColor(0xFF333333.toInt())
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1)
+                })
+                val r = LinearLayout(act).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    setPadding(0, px(12), 0, px(12))
+                }
+                r.addView(TextView(act).apply {
+                    text = k
+                    textSize = 13f
+                    setTextColor(0xFF8A8A8A.toInt())
+                    useDisplay()
+                    layoutParams = LinearLayout.LayoutParams(px(110), ViewGroup.LayoutParams.WRAP_CONTENT)
+                })
+                r.addView(TextView(act).apply {
+                    text = v
+                    textSize = 14f
+                    setTextColor(Color.WHITE)
+                    useDisplay()
+                    setTextIsSelectable(true)
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                })
+                box.addView(r)
+            }
+            list.addView(box)
         }
+
+        section("File", rows.filter { it.first in fileKeys })
+        section("Date", rows.filter { it.first in dateKeys })
+        section("Location", rows.filter { it.first in placeKeys })
+        section("More info", cameraRows)
+
         if (actions.isNotEmpty()) {
             val row = LinearLayout(act).apply {
                 orientation = LinearLayout.HORIZONTAL
-                setPadding(0, (24 * d).toInt(), 0, 0)
+                setPadding(px(8), px(20), 0, 0)
             }
             actions.forEach { (label, run) ->
                 row.addView(TextView(act).apply {
@@ -262,9 +299,9 @@ object DetailsSheet {
                     useDisplay()
                     gravity = Gravity.CENTER
                     setBackgroundResource(R.drawable.bg_chip)
-                    setPadding((16 * d).toInt(), (9 * d).toInt(), (16 * d).toInt(), (9 * d).toInt())
+                    setPadding(px(16), px(9), px(16), px(9))
                     layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                        .apply { marginEnd = (10 * d).toInt() }
+                        .apply { marginEnd = px(10) }
                     setOnClickListener { dlg.dismiss(); run() }
                 })
             }

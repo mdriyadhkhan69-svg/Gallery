@@ -88,8 +88,18 @@ object Deleter {
         var todo = uris
         if (Build.VERSION.SDK_INT >= 31 && MediaStore.canManageMedia(ctx)) {
             val cv = android.content.ContentValues().apply { put(MediaStore.MediaColumns.IS_TRASHED, 1) }
-            todo = uris.filter { u -> val ok = try { cr.update(u, cv, null, null) > 0 } catch (e: Exception) { false }; !ok }
+            todo = uris.filter { u ->
+                val ok = try {
+                    cr.update(u, cv, null, null) > 0
+                } catch (e: Exception) {
+                    android.util.Log.e("GalleryDbg", "silent trash failed: $u", e)
+                    false
+                }
+                !ok
+            }
             if (todo.isEmpty()) return null
+        } else {
+            android.util.Log.d("GalleryDbg", "canManageMedia=" + (Build.VERSION.SDK_INT >= 31 && MediaStore.canManageMedia(ctx)))
         }
         if (Build.VERSION.SDK_INT >= 30) return MediaStore.createTrashRequest(cr, todo, true).intentSender
         for (u in uris) {

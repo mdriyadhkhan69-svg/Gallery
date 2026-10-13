@@ -1,5 +1,6 @@
 package com.example.gallery
 
+import android.animation.ValueAnimator
 import android.app.Activity
 import android.graphics.Color
 import android.net.Uri
@@ -9,6 +10,7 @@ import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
+import android.view.animation.DecelerateInterpolator
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
@@ -20,15 +22,19 @@ import androidx.core.app.ActivityOptionsCompat
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlin.math.abs
+import kotlin.math.floor
+import kotlin.math.ln
+import kotlin.math.max
+import kotlin.math.roundToInt
 
 class PicturesFragment : Fragment(R.layout.fragment_pictures) {
 
     private val vm: GalleryViewModel by activityViewModels()
     private lateinit var grid: RecyclerView
-    private lateinit var lm: GridLayoutManager
+    private lateinit var lm: ZoomGridLayoutManager
     private lateinit var adapter: PhotoAdapter
     private lateinit var search: SearchController
     private lateinit var title: TextView
@@ -50,6 +56,11 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     private lateinit var pullSub: TextView
     private var pullSubText = ""
     private var pullHdr: PullHeader? = null
+
+    // zoom state
+    private var zoomAnim: ValueAnimator? = null
+    private var pinchX = 0f
+    private var pinchY = 0f
 
     // drag-select state
     private var dragging = false
@@ -112,10 +123,10 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         search = SearchController(input, listOf<View>(v.findViewById(R.id.titleBox), btnDup, btnMore), btnSearch) { query = it; rebuild() }
 
         adapter = PhotoAdapter({ r, p -> onTap(r, p) }, { r, p -> onLong(r, p) }, { p -> onHeaderTap(p) }, { m -> onDup(m) })
-        lm = GridLayoutManager(requireContext(), Prefs.columns)
-        lm.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-            override fun getSpanSize(p: Int) = if (adapter.getItemViewType(p) == PhotoAdapter.HEADER) lm.spanCount else 1
-        }
+        lm = ZoomGridLayoutManager(requireContext()) { adapter.currentList }
+        val startLevel = (Prefs.getStr("zoomLvl", "0").toIntOrNull() ?: 0).coerceIn(0, ZoomGridLayoutManager.MAX_ZOOM)
+        lm.setLevel(startLevel)
+        saveLevel(startLevel)
         grid.layoutManager = lm
         grid.adapter = adapter
         grid.itemAnimator = null
@@ -190,7 +201,8 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     }
 
     override fun onDestroyView() {
-        clearColFx()
+        zoomAnim?.cancel()
+        zoomAnim = null
         previewer?.release()
         previewer = null
         pullHdr = null
@@ -199,12 +211,18 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     }
 
     /** Settings theke column change korle call hoy */
-    fun applyColumns() { if (::lm.isInitialized) setColumns(Prefs.columns) }
+    fun applyColumns() {
+        if (!::lm.isInitialized) return
+        val cur = lm.zoom.roundToInt()
+        if (Prefs.columns != max(3, cur + 2)) {
+            animateZoomTo((Prefs.columns - 2).coerceIn(0, ZoomGridLayoutManager.MAX_ZOOM), grid.width / 2f, grid.height / 2f)
+        }
+    }
 
     /** Active tab abar tap korle top e smooth scroll */
     fun scrollToTop() {
         if (!::grid.isInitialized || !isAdded) return
-        if (colAnim?.isRunning == true) return
+        if (zoomAnim?.isRunning == true) return
         grid.stopScroll()
         if (!grid.canScrollVertically(-1)) return
         if (lm.findFirstVisibleItemPosition() > 40) {
@@ -213,16 +231,56 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         } else grid.smoothScrollToPosition(0)
     }
 
-    // ---------- Pinch to change columns (2..7) ----------
+    // ---------- Pinch zoom: 0 = normal custom layout, 1..5 = uniform 3..7 columns ----------
+    private fun saveLevel(l: Int) {
+        Prefs.putStr("zoomLvl", l.toString())
+        Prefs.columns = max(3, l + 2)
+    }
+
+    private fun animateZoomTo(target: Int, fx: Float, fy: Float) {
+        zoomAnim?.cancel()
+        val t = target.coerceIn(0, ZoomGridLayoutManager.MAX_ZOOM)
+        val from = lm.zoom
+        saveLevel(t)
+        if (abs(from - t) < 0.001f) { lm.setZoom(t.toFloat(), fx, fy); return }
+        zoomAnim = ValueAnimator.ofFloat(from, t.toFloat()).apply {
+            duration = 220
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { lm.setZoom(it.animatedValue as Float, fx, fy) }
+            start()
+        }
+    }
+
     private fun setupPinch() {
+        var dir = 0f
         val sd = ScaleGestureDetector(requireContext(), object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-            var acc = 1f
-            override fun onScaleBegin(d: ScaleGestureDetector): Boolean { acc = 1f; return true }
-            override fun onScale(d: ScaleGestureDetector): Boolean {
-                acc *= d.scaleFactor
-                if (acc > 1.28f) { setColumns(lm.spanCount - 1, d.focusX, d.focusY); acc = 1f }
-                else if (acc < 0.78f) { setColumns(lm.spanCount + 1, d.focusX, d.focusY); acc = 1f }
+            override fun onScaleBegin(d: ScaleGestureDetector): Boolean {
+                if (dragging) return false
+                zoomAnim?.cancel()
+                grid.stopScroll()
+                dir = 0f
                 return true
+            }
+
+            override fun onScale(d: ScaleGestureDetector): Boolean {
+                val ds = -ln(d.scaleFactor) * 2.4f
+                if (ds != 0f) dir = ds
+                pinchX = d.focusX
+                pinchY = d.focusY
+                lm.setZoom(lm.zoom + ds, pinchX, pinchY)
+                return true
+            }
+
+            override fun onScaleEnd(d: ScaleGestureDetector) {
+                val z = lm.zoom
+                val lo = floor(z)
+                val f = z - lo
+                val t = when {
+                    dir > 0f -> if (f > 0.3f) lo + 1f else lo
+                    dir < 0f -> if (f < 0.7f) lo else lo + 1f
+                    else -> z.roundToInt().toFloat()
+                }
+                animateZoomTo(t.toInt(), pinchX, pinchY)
             }
         })
         sd.isQuickScaleEnabled = false
@@ -235,105 +293,6 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         })
     }
 
-    private fun setColumns(n: Int, fx: Float = -1f, fy: Float = -1f) {
-        val c = n.coerceIn(2, 7)
-        if (c == lm.spanCount) return
-        var pos = -1
-        var off = 0
-        if (fx >= 0f) {
-            val child = grid.findChildViewUnder(fx, fy)
-            if (child != null) {
-                val p = grid.getChildAdapterPosition(child)
-                if (p != RecyclerView.NO_POSITION && adapter.getItemViewType(p) == PhotoAdapter.PHOTO) {
-                    pos = p
-                    off = child.top
-                }
-            }
-        }
-        if (pos < 0) {
-            pos = lm.findFirstVisibleItemPosition().coerceAtLeast(0)
-            off = lm.findViewByPosition(pos)?.top ?: 0
-        }
-        val fewer = c < lm.spanCount
-        val snap = grabSnapshot()
-        Prefs.columns = c
-        lm.spanCount = c
-        lm.scrollToPositionWithOffset(pos, off)
-        playColFx(snap, fewer)
-    }
-    // ---------- Column change transition ----------
-    private var colAnim: android.animation.ValueAnimator? = null
-    private var snapView: ImageView? = null
-
-    private fun clearColFx() {
-        colAnim?.removeAllListeners()
-        colAnim?.cancel()
-        colAnim = null
-        snapView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
-        snapView = null
-        if (::grid.isInitialized) {
-            grid.alpha = 1f
-            grid.scaleX = 1f
-            grid.scaleY = 1f
-            grid.elevation = 0f
-            grid.background = null
-        }
-        view?.findViewById<View>(R.id.fastScroll)?.translationZ = 0f
-        view?.findViewById<View>(R.id.btnTop)?.translationZ = 0f
-    }
-
-    private fun grabSnapshot(): android.graphics.Bitmap? {
-        clearColFx()
-        if (grid.width <= 0 || grid.height <= 0) return null
-        return try {
-            val b = android.graphics.Bitmap.createBitmap(grid.width, grid.height, android.graphics.Bitmap.Config.ARGB_8888)
-            grid.draw(android.graphics.Canvas(b))
-            b
-        } catch (e: Throwable) { null }
-    }
-
-    private fun playColFx(snap: android.graphics.Bitmap?, fewer: Boolean) {
-        if (snap == null) return
-        val parent = grid.parent as? android.view.ViewGroup ?: return
-        val d = resources.displayMetrics.density
-        val iv = ImageView(requireContext())
-        iv.setImageBitmap(snap)
-        iv.scaleType = ImageView.ScaleType.FIT_XY
-        parent.addView(iv, parent.indexOfChild(grid), android.widget.FrameLayout.LayoutParams(grid.width, grid.height))
-        iv.translationY = grid.translationY
-        snapView = iv
-
-        val s0 = if (fewer) 0.95f else 1.05f
-        val oldTo = if (fewer) 1.04f else 0.96f
-        val maxElev = 10f * d
-        grid.background = android.graphics.drawable.ColorDrawable(0xFF000000.toInt())
-        grid.alpha = 0f
-        grid.scaleX = s0
-        grid.scaleY = s0
-        grid.elevation = 0f
-        view?.findViewById<View>(R.id.fastScroll)?.translationZ = 12f * d
-        view?.findViewById<View>(R.id.btnTop)?.translationZ = 12f * d
-
-        colAnim = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 220
-            interpolator = android.view.animation.DecelerateInterpolator()
-            addUpdateListener {
-                val f = it.animatedValue as Float
-                grid.alpha = f
-                val sc = s0 + (1f - s0) * f
-                grid.scaleX = sc
-                grid.scaleY = sc
-                grid.elevation = maxElev * Math.sin(Math.PI * f).toFloat()
-                val os = 1f + (oldTo - 1f) * f
-                iv.scaleX = os
-                iv.scaleY = os
-            }
-            addListener(object : android.animation.AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: android.animation.Animator) { clearColFx() }
-            })
-            start()
-        }
-    }
     // ---------- Drag to select ----------
     /** Long-press kore angul na tule drag korle, anchor theke angul porjonto sob item select hoy. Edge e dhorle auto-scroll. */
     private fun setupDragSelect() {
@@ -690,9 +649,10 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     }
 
     private fun gridDialog() {
+        val labels = arrayOf("Normal", "3 columns", "4 columns", "5 columns", "6 columns", "7 columns")
         MaterialAlertDialogBuilder(requireContext()).setTitle("Grid size")
-            .setSingleChoiceItems(Array(6) { "${it + 2} columns" }, lm.spanCount - 2) { d, w ->
-                setColumns(w + 2); d.dismiss()
+            .setSingleChoiceItems(labels, lm.zoom.roundToInt()) { d, w ->
+                animateZoomTo(w, grid.width / 2f, grid.height / 2f); d.dismiss()
             }.show()
     }
 

@@ -103,7 +103,7 @@
                 android:id="@+id/btnPill"
                 android:layout_width="wrap_content"
                 android:layout_height="40dp"
-                android:background="@drawable/bg_pill_outline"
+                android:background="@drawable/bg_circle_outline_clear"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:paddingStart="16dp"
@@ -135,7 +135,7 @@
                 android:id="@+id/btnMute"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:background="@drawable/bg_circle_outline"
+                android:background="@drawable/bg_pill_outline_clear"
                 android:contentDescription="Mute"
                 android:padding="10dp"
                 android:src="@drawable/ic_volume_on" />
@@ -161,7 +161,7 @@
             <com.example.gallery.TimelineView
                 android:id="@+id/expTimeline"
                 android:layout_width="match_parent"
-                android:layout_height="76dp"
+                android:layout_height="52dp"
                 android:layout_marginStart="12dp"
                 android:layout_marginEnd="12dp"
                 android:layout_marginBottom="4dp" />

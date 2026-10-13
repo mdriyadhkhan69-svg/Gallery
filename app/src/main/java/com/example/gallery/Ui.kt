@@ -163,14 +163,56 @@ fun showDeleteSheet(ctx: Context, message: String, confirmLabel: String = "Delet
         gravity = Gravity.CENTER
         isSingleLine = true
         setPadding((18 * d).toInt(), 0, (18 * d).toInt(), 0)
-        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, (52 * d).toInt())
+        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, (52 * d).toInt()).apply {
+            marginStart = (14 * d).toInt()
+            marginEnd = (14 * d).toInt()
+        }
         setBackgroundResource(R.drawable.bg_dialog_btn)
         setOnClickListener { dlg.dismiss(); act() }
     }
     row.addView(btn("Cancel", cancelColor) { })
 
-    row.addView(btn(confirmLabel, confirmColor) { onDelete() })
+    row.addView(btn(confirmLabel, confirmColor) { onDelete() }.apply {
+        (layoutParams as LinearLayout.LayoutParams).marginStart = (12 * d).toInt()
+    })
     card.addView(row)
+    outer.addView(card)
+    dlg.setContentView(outer)
+    (outer.parent as View).setBackgroundColor(Color.TRANSPARENT)
+    dlg.behavior.state = BottomSheetBehavior.STATE_EXPANDED
+    dlg.behavior.skipCollapsed = true
+    dlg.show()
+}
+
+/** Ek button-er info sheet */
+fun showInfoSheet(ctx: Context, message: String) {
+    val d = ctx.resources.displayMetrics.density
+    val dlg = BottomSheetDialog(ctx, R.style.App_BottomSheetDialog)
+    val outer = FrameLayout(ctx)
+    outer.setPadding((12 * d).toInt(), 0, (12 * d).toInt(), (12 * d).toInt())
+    val card = LinearLayout(ctx).apply {
+        orientation = LinearLayout.VERTICAL
+        background = GradientDrawable().apply { setColor(0xFF2C2C2C.toInt()); cornerRadius = 28 * d }
+        setPadding((8 * d).toInt(), (28 * d).toInt(), (8 * d).toInt(), (8 * d).toInt())
+    }
+    card.addView(TextView(ctx).apply {
+        text = message
+        textSize = 16f
+        setTextColor(Color.WHITE)
+        useDisplay()
+        gravity = Gravity.CENTER
+        setPadding((24 * d).toInt(), 0, (24 * d).toInt(), (20 * d).toInt())
+    })
+    card.addView(TextView(ctx).apply {
+        text = "OK"
+        textSize = 16f
+        setTextColor(Colors.BLUE)
+        useDisplay()
+        gravity = Gravity.CENTER
+        setBackgroundResource(R.drawable.bg_dialog_btn)
+        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (52 * d).toInt())
+        setOnClickListener { dlg.dismiss() }
+    })
     outer.addView(card)
     dlg.setContentView(outer)
     (outer.parent as View).setBackgroundColor(Color.TRANSPARENT)

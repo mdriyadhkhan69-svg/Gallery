@@ -141,7 +141,7 @@ class PhotoAdapter(
         }
 
         fun bind(r: Row.Photo) {
-            Glide.with(img).load(r.m.uri).override(400).centerCrop()
+            Glide.with(img).load(r.m.uri).override(600).fitCenter()
                 .placeholder(ColorDrawable(0xFF161616.toInt())).into(img)
             if (r.m.video) {
                 vid.visibility = View.VISIBLE

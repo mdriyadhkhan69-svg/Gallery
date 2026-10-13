@@ -12,6 +12,11 @@
         android:contentDescription="Thumbnail"
         android:scaleType="centerCrop" />
 
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_grid_border" />
+
     <ImageView
         android:id="@+id/check"
         android:layout_width="22dp"

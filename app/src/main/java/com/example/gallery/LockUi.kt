@@ -22,6 +22,10 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
+import android.text.method.PasswordTransformationMethod
+import android.text.method.HideReturnsTransformationMethod
+import android.widget.FrameLayout
+import android.widget.ImageView
 
 object LockStore {
     private const val ITER = 120_000
@@ -51,10 +55,24 @@ object LockStore {
         val got = hash(pw, Base64.decode(s, Base64.NO_WRAP))
         return MessageDigest.isEqual(got, Base64.decode(h, Base64.NO_WRAP))
     }
+    fun hasBackup() = Prefs.getStr("lock_hash_bak").isNotEmpty()
+
+    fun verifyBackup(pw: CharArray): Boolean {
+        val s = Prefs.getStr("lock_salt_bak")
+        val h = Prefs.getStr("lock_hash_bak")
+        if (s.isEmpty() || h.isEmpty()) return false
+        val got = hash(pw, Base64.decode(s, Base64.NO_WRAP))
+        return MessageDigest.isEqual(got, Base64.decode(h, Base64.NO_WRAP))
+    }
 }
 
 object LockFlow {
     fun open(act: AppCompatActivity) {
+        LockReset.tick()
+        if (LockReset.running()) {
+            showInfoSheet(act, "Password reset countdown running.\nWait for it to end.\n\nTime left: ${fmtClock(LockReset.remaining().toInt())}")
+            return
+        }
         val go = { act.startActivity(Intent(act, LockAlbumsActivity::class.java)); Unit }
         if (LockStore.hasPassword()) LockDialog.enter(act, go) else LockDialog.create(act, go)
     }
@@ -90,7 +108,16 @@ object LockDialog {
             }.start()
         }, onDone
     )
-
+    fun verifyOld(act: AppCompatActivity, onDone: () -> Unit) = panel(
+        act, "Enter lock password", listOf("Password"),
+        { v, fin ->
+            if (v[0].isEmpty()) fin("Enter your password")
+            else Thread {
+                val ok = try { LockStore.verifyBackup(v[0].toCharArray()) } catch (e: Exception) { false }
+                fin(if (ok) null else "Incorrect password")
+            }.start()
+        }, onDone
+    )
     private fun panel(
         act: AppCompatActivity, title: String, hints: List<String>,
         submit: (List<String>, (String?) -> Unit) -> Unit, onSuccess: () -> Unit
@@ -126,11 +153,33 @@ object LockDialog {
                 textSize = 15f
                 useDisplay()
                 setBackgroundResource(R.drawable.bg_field)
-                setPadding(px(14), 0, px(14), 0)
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(48)).apply { topMargin = px(14) }
+                setPadding(px(14), 0, px(48), 0)
+                layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             }
         }
-        fields.forEach { card.addView(it) }
+        fields.forEach { f ->
+            val wrap = FrameLayout(act).apply {
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(48)).apply { topMargin = px(14) }
+            }
+            val eye = ImageView(act).apply {
+                setImageResource(R.drawable.ic_eye_off)
+                setColorFilter(0xFF8A8A8A.toInt())
+                setPadding(px(12), px(12), px(12), px(12))
+                contentDescription = "Show password"
+                layoutParams = FrameLayout.LayoutParams(px(48), px(48), Gravity.END or Gravity.CENTER_VERTICAL)
+                setOnClickListener {
+                    val show = f.transformationMethod is PasswordTransformationMethod
+                    val sel = f.selectionEnd
+                    f.transformationMethod = if (show) HideReturnsTransformationMethod.getInstance() else PasswordTransformationMethod.getInstance()
+                    f.setSelection(sel.coerceIn(0, f.text.length))
+                    setImageResource(if (show) R.drawable.ic_eye else R.drawable.ic_eye_off)
+                    contentDescription = if (show) "Hide password" else "Show password"
+                }
+            }
+            wrap.addView(f)
+            wrap.addView(eye)
+            card.addView(wrap)
+        }
 
         val err = TextView(act).apply {
             textSize = 13f

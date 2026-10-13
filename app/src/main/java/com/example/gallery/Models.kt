@@ -14,7 +14,7 @@ data class Story(val key: String, val title: String, val range: String, val cove
 
 sealed class Row {
     data class Header(val title: String) : Row()
-    data class Photo(val m: Media, val index: Int) : Row()
+    data class Photo(val m: Media, val index: Int, val h: Int = 0, val span: Int = 0) : Row()
 }
 
 /** Viewer e list pass korar jonno (Intent e boro list pass kora jay na) */

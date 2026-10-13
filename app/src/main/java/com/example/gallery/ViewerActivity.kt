@@ -38,6 +38,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
+import android.view.Gravity
+import android.widget.LinearLayout
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.bottomsheet.BottomSheetDialog
 
 class ViewerActivity : AppCompatActivity() {
 
@@ -489,13 +493,50 @@ class ViewerActivity : AppCompatActivity() {
 
     // ---------- More menu ----------
     private fun showMore() {
-        val acts = ArrayList<Pair<String, () -> Unit>>()
-        if (!cur().video) {
-            acts.add("Rotate" to { rotateView() })
-            acts.add("Set as wallpaper" to { setWallpaper() })
+        val pw = android.widget.PopupWindow(this)
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(0xFF2C2C2C.toInt())
+                cornerRadius = dp(22f).toFloat()
+            }
+            setPadding(0, dp(8f), 0, dp(8f))
+            elevation = dp(10f).toFloat()
         }
-        acts.add("Open with" to { openWith() })
-        DetailsSheet.show(this, cur(), acts)
+        fun addRow(label: String, run: () -> Unit) {
+            box.addView(TextView(this).apply {
+                text = label
+                textSize = 15f
+                setTextColor(Color.WHITE)
+                useDisplay()
+                gravity = Gravity.CENTER
+                setPadding(dp(28f), 0, dp(28f), 0)
+                setBackgroundResource(R.drawable.bg_press)
+                isClickable = true
+                isFocusable = true
+                setOnClickListener { pw.dismiss(); run() }
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48f)))
+        }
+        addRow("Details") { DetailsSheet.show(this, cur()) }
+        if (!cur().video) {
+            addRow("Rotate") { rotateView() }
+            addRow("Set as wallpaper") { setWallpaper() }
+        }
+        addRow("Open with") { openWith() }
+
+        pw.contentView = box
+        pw.width = ViewGroup.LayoutParams.WRAP_CONTENT
+        pw.height = ViewGroup.LayoutParams.WRAP_CONTENT
+        pw.isFocusable = true
+        pw.isOutsideTouchable = true
+        pw.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        pw.animationStyle = android.R.style.Animation_Dialog
+        box.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        val a = btnMore
+        pw.showAsDropDown(a, -(box.measuredWidth - a.width) - dp(8f), -(box.measuredHeight + a.height + dp(4f)))
     }
 
     private fun rotateView() {

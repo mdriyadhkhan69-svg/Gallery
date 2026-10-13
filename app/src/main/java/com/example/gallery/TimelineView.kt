@@ -199,16 +199,23 @@ class TimelineView @JvmOverloads constructor(c: Context, a: AttributeSet? = null
             c.drawRoundRect(rr, 4f * d, 4f * d, white)
             rr.set(rx + hw / 2 - 1f * d, (t + b) / 2 - 6f * d, rx + hw / 2 + 1f * d, (t + b) / 2 + 6f * d)
             c.drawRoundRect(rr, 1f * d, 1f * d, grip)
-        }
 
-        val px = xOf(posMs.coerceIn(0, duration))
-        val pe = if (trimEnabled) 2.25f else 3.5f
-        val ph = if (trimEnabled) 1f else 1.75f
-        val py = if (trimEnabled) padV - 3f * d else 0f
-        rr.set(px - pe * d, py, px + pe * d, height - py)
-        c.drawRoundRect(rr, 3f * d, 3f * d, edge)
-        rr.set(px - ph * d, py + 1f * d, px + ph * d, height - py - 1f * d)
-        c.drawRoundRect(rr, 2f * d, 2f * d, white)
+            val px = xOf(posMs.coerceIn(0, duration))
+            val py = padV - 3f * d
+            rr.set(px - 2.25f * d, py, px + 2.25f * d, height - py)
+            c.drawRoundRect(rr, 3f * d, 3f * d, edge)
+            rr.set(px - 1f * d, py + 1f * d, px + 1f * d, height - py - 1f * d)
+            c.drawRoundRect(rr, 2f * d, 2f * d, white)
+        } else {
+            val inset = 0f
+            val half = 1f * d
+            val px = xOf(posMs.coerceIn(0, duration)).coerceIn(l + half + inset, r - half - inset)
+            c.save()
+            c.clipPath(clip)
+            rr.set(px - half, t + inset, px + half, b - inset)
+            c.drawRoundRect(rr, half, half, white)
+            c.restore()
+        }
     }
 
     private fun pick(x: Float): Int {

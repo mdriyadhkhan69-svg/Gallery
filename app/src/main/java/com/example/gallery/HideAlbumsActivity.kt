@@ -27,6 +27,7 @@ class HideAlbumsActivity : AppCompatActivity() {
         edgeToEdge(findViewById(R.id.root))
         findViewById<TextView>(R.id.title).useDisplay()
         findViewById<View>(R.id.back).setOnClickListener { finish() }
+        LockReset.tick()
         hidden.addAll(Prefs.getSet("hidden"))
         listAdapter = Adapter()
         val rv = findViewById<RecyclerView>(R.id.list)
@@ -66,13 +67,20 @@ class HideAlbumsActivity : AppCompatActivity() {
             h.sw.onChange = null
             h.sw.set(key in hidden, false)
             dim(h, key in hidden)
-            h.sw.onChange = { on ->
-                if (on) hidden.add(key) else hidden.remove(key)
-                Prefs.setSet("hidden", hidden)
-                Changes.dirty = true
-                dim(h, on)
+            if (LockReset.isProtected(key)) {
+                val warn = { android.widget.Toast.makeText(h.itemView.context, "Protected until the reset timer ends", android.widget.Toast.LENGTH_SHORT).show() }
+                h.sw.setOnClickListener { warn() }
+                h.itemView.setOnClickListener { warn() }
+            } else {
+                h.sw.setOnClickListener { h.sw.toggle() }
+                h.sw.onChange = { on ->
+                    if (on) hidden.add(key) else hidden.remove(key)
+                    Prefs.setSet("hidden", hidden)
+                    Changes.dirty = true
+                    dim(h, on)
+                }
+                h.itemView.setOnClickListener { h.sw.toggle() }
             }
-            h.itemView.setOnClickListener { h.sw.toggle() }
         }
 
         override fun getItemCount() = albums.size

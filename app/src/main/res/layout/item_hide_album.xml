@@ -41,8 +41,7 @@
             android:textSize="13sp" />
     </LinearLayout>
 
-    <com.google.android.material.materialswitch.MaterialSwitch
-        style="@style/App.Switch"
+    <com.example.gallery.CapsuleSwitch
         android:id="@+id/sw"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />

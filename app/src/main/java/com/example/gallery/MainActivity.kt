@@ -39,6 +39,13 @@ class MainActivity : AppCompatActivity() {
     private var current = -1
     private lateinit var navPill: View
     private lateinit var navItems: List<View>
+    private val resetWatch = android.os.Handler(android.os.Looper.getMainLooper())
+    private val resetRun = object : Runnable {
+        override fun run() {
+            if (LockReset.tick()) { Changes.dirty = false; vm.publish() }
+            else if (LockReset.running()) resetWatch.postDelayed(this, 1000)
+        }
+    }
 
     private val permLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { checkAccess(); vm.load() }
 
@@ -80,10 +87,16 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         (supportFragmentManager.findFragmentByTag("tab0") as? PicturesFragment)?.applyColumns()
+        LockReset.tick()
         if (Changes.dirty) { Changes.dirty = false; vm.publish() }
+        resetWatch.removeCallbacks(resetRun)
+        if (LockReset.running()) resetWatch.postDelayed(resetRun, 1000)
         checkAccess()
     }
-
+    override fun onPause() {
+        super.onPause()
+        resetWatch.removeCallbacksAndMessages(null)
+    }
     // ---------- Tabs ----------
     private fun select(i: Int, animate: Boolean) {
         if (i == current) {
@@ -210,8 +223,34 @@ class MainActivity : AppCompatActivity() {
             }
             grid.addView(cell)
         }
-        d.setContentView(grid)
-        (grid.parent as View).apply {
+        val wrap = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        if (LockReset.running()) {
+            val tv = TextView(this).apply {
+                textSize = 12f
+                setTextColor(Colors.BLUE)
+                useDisplay()
+                gravity = Gravity.CENTER
+                setBackgroundResource(R.drawable.bg_chip)
+                setPadding((14 * dp).toInt(), (6 * dp).toInt(), (14 * dp).toInt(), (6 * dp).toInt())
+                text = "Lock reset · " + fmtClock(LockReset.remaining().toInt())
+            }
+            wrap.addView(tv, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                gravity = Gravity.CENTER_HORIZONTAL
+                topMargin = (20 * dp).toInt()
+            })
+            val tick = object : Runnable {
+                override fun run() {
+                    if (!d.isShowing) return
+                    if (LockReset.tick()) { tv.visibility = View.GONE; Changes.dirty = false; vm.publish(); return }
+                    tv.text = "Lock reset · " + fmtClock(LockReset.remaining().toInt())
+                    tv.postDelayed(this, 1000)
+                }
+            }
+            tv.postDelayed(tick, 1000)
+        }
+        wrap.addView(grid)
+        d.setContentView(wrap)
+        (wrap.parent as View).apply {
             setBackgroundResource(R.drawable.bg_menu_sheet)
             backgroundTintList = null
         }

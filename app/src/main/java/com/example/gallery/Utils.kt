@@ -90,7 +90,7 @@ object Deleter {
             val cv = android.content.ContentValues().apply { put(MediaStore.MediaColumns.IS_TRASHED, 1) }
             todo = uris.filter { u ->
                 val ok = try {
-                    cr.update(u, cv, null, null) > 0
+                    cr.update(MediaStore.setRequireOriginal(u), cv, null, null) > 0
                 } catch (e: Exception) {
                     android.util.Log.e("GalleryDbg", "silent trash failed: $u", e)
                     false

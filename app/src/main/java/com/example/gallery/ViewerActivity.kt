@@ -536,7 +536,9 @@ class ViewerActivity : AppCompatActivity() {
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
         )
         val a = btnMore
-        pw.showAsDropDown(a, -(box.measuredWidth - a.width) - dp(8f), -(box.measuredHeight + a.height + dp(4f)))
+        val panelW = (box.measuredWidth + dp(56f)).coerceAtMost(resources.displayMetrics.widthPixels - dp(24f))
+        pw.width = panelW
+        pw.showAsDropDown(a, -(panelW - a.width) - dp(8f), -(box.measuredHeight + a.height + dp(4f)))
     }
 
     private fun rotateView() {

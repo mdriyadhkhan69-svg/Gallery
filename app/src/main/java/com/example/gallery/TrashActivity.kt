@@ -11,6 +11,8 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
 import android.view.LayoutInflater
+import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
@@ -52,6 +54,40 @@ class TrashActivity : AppCompatActivity() {
 
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
 
+    private fun trashCols(): Int = (Prefs.getStr("trashCols", "3").toIntOrNull() ?: 3).coerceIn(3, 7)
+
+    private fun setupPinch(rv: RecyclerView, glm: GridLayoutManager) {
+        var acc = 1f
+        val sd = ScaleGestureDetector(this, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScaleBegin(d: ScaleGestureDetector): Boolean { acc = 1f; return true }
+            override fun onScale(d: ScaleGestureDetector): Boolean {
+                acc *= d.scaleFactor
+                val target = when {
+                    acc < 0.8f -> glm.spanCount + 1
+                    acc > 1.25f -> glm.spanCount - 1
+                    else -> return true
+                }.coerceIn(3, 7)
+                acc = 1f
+                if (target != glm.spanCount) {
+                    val first = glm.findFirstVisibleItemPosition().coerceAtLeast(0)
+                    val off = glm.findViewByPosition(first)?.top ?: 0
+                    glm.spanCount = target
+                    Prefs.putStr("trashCols", target.toString())
+                    glm.scrollToPositionWithOffset(first, off)
+                }
+                return true
+            }
+        })
+        sd.isQuickScaleEnabled = false
+        rv.addOnItemTouchListener(object : RecyclerView.OnItemTouchListener {
+            override fun onInterceptTouchEvent(r: RecyclerView, e: MotionEvent): Boolean {
+                sd.onTouchEvent(e); return sd.isInProgress
+            }
+            override fun onTouchEvent(r: RecyclerView, e: MotionEvent) { sd.onTouchEvent(e) }
+            override fun onRequestDisallowInterceptTouchEvent(disallow: Boolean) {}
+        })
+    }
+
     override fun onCreate(b: Bundle?) {
         Prefs.init(this)
         super.onCreate(b)
@@ -77,7 +113,9 @@ class TrashActivity : AppCompatActivity() {
         btnDelete.setOnClickListener { confirmDelete() }
         listAdapter = Adapter()
         val rv = findViewById<RecyclerView>(R.id.list)
-        rv.layoutManager = GridLayoutManager(this, Prefs.columns)
+        val glm = GridLayoutManager(this, trashCols())
+        rv.layoutManager = glm
+        setupPinch(rv, glm)
         rv.adapter = listAdapter
         rv.itemAnimator = null
         rv.setHasFixedSize(true)

@@ -143,43 +143,7 @@ class SettingsActivity : AppCompatActivity() {
             )
         }
     }
-    private fun switchRow(title: String, desc: String, on: Boolean, onChange: (Boolean) -> Unit) {
-        val c = card ?: return
-        if (c.childCount > 0) {
-            c.addView(View(this).apply {
-                setBackgroundColor(0xFF2A2A2A.toInt())
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1)
-                    .apply { marginStart = dp(32); marginEnd = dp(32) }
-            })
-        }
-        val r = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(32), dp(12), dp(16), dp(12))
-        }
-        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        col.addView(TextView(this).apply {
-            text = title
-            textSize = 16f
-            setTextColor(Color.WHITE)
-            useDisplay()
-        })
-        col.addView(TextView(this).apply {
-            text = desc
-            textSize = 13f
-            setTextColor(Colors.GRAY)
-            useDisplay()
-            setPadding(0, dp(2), dp(12), 0)
-        })
-        r.addView(col, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        val sw = CapsuleSwitch(this)
-        sw.contentDescription = title
-        sw.set(on, false)
-        sw.onChange = onChange
-        r.addView(sw)
-        r.setOnClickListener { sw.toggle() }
-        c.addView(r)
-    }
+
     private fun durLabel(): String {
         val m = LockReset.duration() / 60_000L
         return "${m / 60}h ${m % 60}m"

@@ -124,7 +124,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         search = SearchController(input, listOf<View>(v.findViewById(R.id.titleBox), btnDup, btnMore), btnSearch) { query = it; rebuild() }
 
         adapter = PhotoAdapter({ r, p -> onTap(r, p) }, { r, p -> onLong(r, p) }, { p -> onHeaderTap(p) }, { m -> onDup(m) })
-        lm = ZoomGridLayoutManager(requireContext()) { adapter.currentList }
+        lm = ZoomGridLayoutManager(requireContext(), { adapter.currentList })
         val startLevel = (Prefs.getStr("zoomLvl", "0").toIntOrNull() ?: 0).coerceIn(0, ZoomGridLayoutManager.MAX_ZOOM)
         lm.setLevel(startLevel)
         saveLevel(startLevel)

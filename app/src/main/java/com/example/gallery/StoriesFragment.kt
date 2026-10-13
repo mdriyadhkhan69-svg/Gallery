@@ -30,6 +30,8 @@ class StoriesFragment : Fragment(R.layout.fragment_stories) {
 
     private fun toast(s: String) = Toast.makeText(requireContext(), s, Toast.LENGTH_SHORT).show()
 
+    fun swipeBlocked(): Boolean = !::search.isInitialized || search.active
+
     /** Active tab abar tap korle top e smooth scroll */
     fun scrollToTop() {
         val rv = view?.findViewById<RecyclerView>(R.id.list) ?: return

@@ -1,7 +1,13 @@
 package com.example.gallery
 
 import android.Manifest
+import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
+import android.view.MotionEvent
+import android.view.VelocityTracker
+import android.view.ViewConfiguration
+import androidx.core.animation.doOnEnd
+import kotlin.math.abs
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -82,6 +88,7 @@ class MainActivity : AppCompatActivity() {
         select(Prefs.tab.coerceIn(0, 2), false)   // last tab restore (persistent)
         if (savedInstanceState == null && (!hasAccess() || needsVideo())) permLauncher.launch(permissions())
         checkAccess()
+        findViewById<View>(R.id.container).post { ensureTabs() }
     }
 
     override fun onResume() {
@@ -99,6 +106,7 @@ class MainActivity : AppCompatActivity() {
     }
     // ---------- Tabs ----------
     private fun select(i: Int, animate: Boolean) {
+        if (swBusy || swActive) return
         if (i == current) {
             if (animate) {
                 when (val f = supportFragmentManager.findFragmentByTag("tab$i")) {
@@ -153,6 +161,185 @@ class MainActivity : AppCompatActivity() {
         if (animate) navPill.animate().translationX(x).setDuration(220).setInterpolator(DecelerateInterpolator()).start()
         else navPill.translationX = x
     }
+    // ---------- Swipe between sections ----------
+    private var swTracking = false
+    private var swActive = false
+    private var swBusy = false
+    private var swSwallow = false
+    private var swDownX = 0f
+    private var swDownY = 0f
+    private var swTarget = -1
+    private var swW = 0f
+    private var swD = 0f
+    private var swVt: VelocityTracker? = null
+    private var swAnim: ValueAnimator? = null
+    private var swCur: View? = null
+    private var swTgt: View? = null
+    private val swEval = ArgbEvaluator()
+
+    private fun tabFragment(i: Int) = supportFragmentManager.findFragmentByTag("tab$i")
+
+    private fun ensureTabs() {
+        if (isFinishing || isDestroyed) return
+        val fm = supportFragmentManager
+        if (fm.isStateSaved) return
+        fm.executePendingTransactions()
+        val missing = (0..2).filter { fm.findFragmentByTag("tab$it") == null }
+        if (missing.isEmpty()) return
+        val ft = fm.beginTransaction()
+        missing.forEach { i ->
+            val f: Fragment = when (i) {
+                0 -> PicturesFragment.create("all", "", "", false)
+                1 -> AlbumsFragment()
+                else -> StoriesFragment()
+            }
+            ft.add(R.id.container, f, "tab$i")
+            ft.hide(f)
+        }
+        ft.commitNow()
+    }
+
+    private fun swipeBlocked(): Boolean = when (val f = tabFragment(current)) {
+        is PicturesFragment -> f.swipeBlocked()
+        is AlbumsFragment -> f.swipeBlocked()
+        is StoriesFragment -> f.swipeBlocked()
+        else -> true
+    }
+
+    override fun dispatchTouchEvent(e: MotionEvent): Boolean {
+        if (swSwallow) {
+            if (e.actionMasked == MotionEvent.ACTION_UP || e.actionMasked == MotionEvent.ACTION_CANCEL) swSwallow = false
+            return true
+        }
+        if (!Prefs.swipeNav) return super.dispatchTouchEvent(e)
+        when (e.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                swVt?.recycle()
+                swVt = VelocityTracker.obtain().also { it.addMovement(e) }
+                swDownX = e.rawX
+                swDownY = e.rawY
+                val d = resources.displayMetrics
+                val nearScrollbar = e.rawX > d.widthPixels - 48 * d.density
+                swTracking = !swBusy && !swActive && current >= 0 && !nearScrollbar &&
+                        permission.visibility != View.VISIBLE && !swipeBlocked()
+            }
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                swTracking = false
+                if (swActive) { settle(); swSwallow = true; return true }
+            }
+            MotionEvent.ACTION_MOVE -> {
+                swVt?.addMovement(e)
+                if (swActive) { drag(e.rawX - swDownX); return true }
+                if (swTracking && e.pointerCount == 1) {
+                    val dx = e.rawX - swDownX
+                    val dy = e.rawY - swDownY
+                    val slop = ViewConfiguration.get(this).scaledTouchSlop
+                    if (abs(dy) > slop && abs(dy) > abs(dx)) {
+                        swTracking = false
+                    } else if (abs(dx) > slop * 2 && abs(dx) > abs(dy) * 1.6f) {
+                        swTracking = false
+                        if (beginSwipe(dx)) {
+                            val c = MotionEvent.obtain(e)
+                            c.action = MotionEvent.ACTION_CANCEL
+                            super.dispatchTouchEvent(c)
+                            c.recycle()
+                            drag(dx)
+                            return true
+                        }
+                    }
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                swVt?.addMovement(e)
+                swTracking = false
+                if (swActive) { settle(); return true }
+                swVt?.recycle()
+                swVt = null
+            }
+        }
+        return super.dispatchTouchEvent(e)
+    }
+
+    private fun beginSwipe(dx: Float): Boolean {
+        val t = if (dx < 0) current + 1 else current - 1
+        if (t !in 0..2) return false
+        val c = tabFragment(current)?.view
+        val n = tabFragment(t)?.view
+        if (c == null || n == null) return false
+        val w = findViewById<View>(R.id.container).width.toFloat()
+        if (w <= 0f) return false
+        navPill.animate().cancel()
+        swCur = c
+        swTgt = n
+        swTarget = t
+        swW = w
+        swD = 0f
+        n.translationX = if (t > current) w else -w
+        n.visibility = View.VISIBLE
+        swActive = true
+        return true
+    }
+
+    private fun drag(raw: Float) {
+        val d = if (swTarget > current) raw.coerceIn(-swW, 0f) else raw.coerceIn(0f, swW)
+        applySwipe(d)
+    }
+
+    private fun applySwipe(d: Float) {
+        swD = d
+        swCur?.translationX = d
+        swTgt?.translationX = d + if (swTarget > current) swW else -swW
+        val f = (abs(d) / swW).coerceIn(0f, 1f)
+        val inset = 6 * resources.displayMetrics.density
+        val a = navItems[current]
+        val b = navItems[swTarget]
+        navPill.translationX = a.left + inset + (b.left - a.left) * f
+        tabs[current].setTextColor(swEval.evaluate(f, Colors.BLUE, Colors.GRAY) as Int)
+        tabs[swTarget].setTextColor(swEval.evaluate(f, Colors.GRAY, Colors.BLUE) as Int)
+    }
+
+    private fun settle() {
+        swActive = false
+        val vt = swVt
+        swVt = null
+        var vx = 0f
+        if (vt != null) {
+            vt.computeCurrentVelocity(1000)
+            vx = vt.xVelocity
+            vt.recycle()
+        }
+        val dir = if (swTarget > current) -1f else 1f
+        val progress = abs(swD) / swW
+        val fling = abs(vx) > 900f && vx * dir > 0f
+        val commit = progress > 0.33f || (fling && progress > 0.04f)
+        val end = if (commit) dir * swW else 0f
+        val target = swTarget
+        swBusy = true
+        swAnim = ValueAnimator.ofFloat(swD, end).apply {
+            duration = (100 + 180 * (abs(end - swD) / swW)).toLong()
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { applySwipe(it.animatedValue as Float) }
+            doOnEnd { finishSwipe(commit, target) }
+            start()
+        }
+    }
+
+    private fun finishSwipe(commit: Boolean, target: Int) {
+        val c = swCur
+        val n = swTgt
+        swCur = null
+        swTgt = null
+        swBusy = false
+        if (commit) {
+            select(target, false)
+            supportFragmentManager.executePendingTransactions()
+        } else {
+            n?.visibility = View.GONE
+        }
+        c?.translationX = 0f
+        n?.translationX = 0f
+    }
+
     // ---------- Permission ----------
     private fun permissions(): Array<String> = when {
         Build.VERSION.SDK_INT >= 34 -> arrayOf(

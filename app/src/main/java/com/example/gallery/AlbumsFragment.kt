@@ -40,6 +40,9 @@ class AlbumsFragment : Fragment(R.layout.fragment_albums) {
 
     private fun syncBack() { backCb.isEnabled = adapter.editing || search.active }
 
+    fun swipeBlocked(): Boolean =
+        !::adapter.isInitialized || !::search.isInitialized || adapter.editing || search.active
+
     /** Active tab abar tap korle top e smooth scroll */
     fun scrollToTop() {
         val rv = view?.findViewById<RecyclerView>(R.id.list) ?: return

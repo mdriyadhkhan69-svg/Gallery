@@ -103,6 +103,10 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
 
     private fun act(label: String, f: () -> Unit): Pair<String, () -> Unit> = label to f
 
+    /** Selection / search / drag cholle section swipe off thakbe */
+    fun swipeBlocked(): Boolean =
+        !::adapter.isInitialized || !::search.isInitialized || adapter.selecting || search.active || dragging
+
     private fun toast(s: String) = Toast.makeText(requireContext(), s, Toast.LENGTH_SHORT).show()
 
     override fun onViewCreated(v: View, s: Bundle?) {

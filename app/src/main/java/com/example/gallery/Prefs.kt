@@ -29,6 +29,10 @@ object Prefs {
     var useBin: Boolean   // true = Move to Recycle Bin, false = delete permanently
         get() = sp.getBoolean("useBin", true)
         set(v) = sp.edit().putBoolean("useBin", v).apply()
+    var swipeNav: Boolean   // true = swipe between Pictures / Albums / Stories
+        get() = sp.getBoolean("swipeNav", true)
+        set(v) = sp.edit().putBoolean("swipeNav", v).apply()
+
     fun getSet(k: String): Set<String> = HashSet(sp.getStringSet(k, emptySet())!!)
     fun setSet(k: String, s: Set<String>) = sp.edit().putStringSet(k, HashSet(s)).apply()
     fun has(k: String, v: String): Boolean = sp.getStringSet(k, emptySet())!!.contains(v)

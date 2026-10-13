@@ -211,6 +211,12 @@ class SettingsActivity : AppCompatActivity() {
                 }.show()
         }
 
+        switchRow(
+            "Swipe Between Sections",
+            "Swipe horizontally to move between Pictures, Albums, and Stories.",
+            Prefs.swipeNav
+        ) { Prefs.swipeNav = it }
+
         section("Favourites")
         row("Clear all favourites", "Remove the heart from every photo and story") {
             MaterialAlertDialogBuilder(this).setMessage("Clear all favourites?")

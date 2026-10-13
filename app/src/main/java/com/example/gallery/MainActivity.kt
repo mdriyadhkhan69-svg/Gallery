@@ -274,8 +274,11 @@ class MainActivity : AppCompatActivity() {
         swTarget = t
         swW = w
         swD = 0f
+        n.alpha = 1f
+        c.alpha = 1f
         n.translationX = if (t > current) w else -w
         n.visibility = View.VISIBLE
+        n.requestLayout()
         swActive = true
         return true
     }
@@ -336,8 +339,14 @@ class MainActivity : AppCompatActivity() {
         } else {
             n?.visibility = View.GONE
         }
-        c?.translationX = 0f
-        n?.translationX = 0f
+        for (k in 0..2) {
+            tabFragment(k)?.view?.let { v ->
+                v.alpha = 1f
+                v.translationX = 0f
+                v.visibility = if (k == current) View.VISIBLE else View.GONE
+                if (k == current) v.requestLayout()
+            }
+        }
     }
 
     // ---------- Permission ----------

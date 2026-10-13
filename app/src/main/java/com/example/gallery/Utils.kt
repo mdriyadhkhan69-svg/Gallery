@@ -144,6 +144,27 @@ object Deleter {
         }
         return null
     }
+    fun performWrite(ctx: Context, uris: List<Uri>): IntentSender? {
+        if (Build.VERSION.SDK_INT < 30) return null
+        val todo = uris.filter { exists(ctx, it) }
+        if (todo.isEmpty()) return null
+        return try {
+            MediaStore.createWriteRequest(ctx.contentResolver, todo).intentSender
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "write request failed (${todo.size} items)", e)
+            null
+        }
+    }
+
+    fun trashNow(ctx: Context, uris: List<Uri>) {
+        val cr = ctx.contentResolver
+        for (u in uris) {
+            if (exists(ctx, u)) {
+                val ok = trashDirect(cr, u)
+                android.util.Log.i(TAG, "trashNow ok=$ok")
+            }
+        }
+    }
 
     fun delete(ctx: Context, uris: List<Uri>): IntentSender? = perform(ctx, uris, binAvailable())
 }

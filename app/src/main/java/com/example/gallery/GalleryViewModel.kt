@@ -133,7 +133,7 @@ class GalleryViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun albumsOf(list: List<Media>): List<Album> =
-        list.groupBy { it.bucketId }.map { (id, l) -> Album(id, l[0].bucket, l.size, l[0].uri, l[0].date, l.count { it.video }) }
+        list.groupBy { it.bucketId }.map { (id, l) -> Album(id, AlbumNames.get(id) ?: l[0].bucket, l.size, l[0].uri, l[0].date, l.count { it.video }) }
 
     /** Device album + app-managed (custom) album. Custom album er id negative. */
     fun albums(): List<Album> {

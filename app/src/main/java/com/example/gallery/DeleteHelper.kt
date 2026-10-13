@@ -5,6 +5,8 @@ import android.content.Context
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.ActivityResultCaller
@@ -19,6 +21,7 @@ class DeleteHelper(
 ) {
     private val tag = "GalleryDbg"
     private val chunk = 100
+    private val hd = Handler(Looper.getMainLooper())
     private var pending: List<Uri> = emptyList()
     private var queue: List<Uri> = emptyList()
     var quiet = false
@@ -26,14 +29,18 @@ class DeleteHelper(
     private var rounds = 0
     private var denied = false
     private var stage = 0
+    private var busy = false
+    private var verifyTries = 0
+    private var progress: MoveProgress? = null
 
     private val launcher = caller.registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { r ->
-        Log.i(tag, "authorization result ok=${r.resultCode == Activity.RESULT_OK} stage=$stage")
+        Log.i(tag, "authorization result ok=${r.resultCode == Activity.RESULT_OK} stage=$stage busy=$busy")
+        if (!busy) return@registerForActivityResult
         after(r.resultCode == Activity.RESULT_OK)
     }
 
     fun confirmAndDelete(uris: List<Uri>, onConfirm: () -> Unit = {}) {
-        if (uris.isEmpty()) return
+        if (uris.isEmpty() || busy) return
         val c = ctx()
         val n = uris.size
         if (Prefs.useBin && Deleter.binAvailable()) {
@@ -46,16 +53,36 @@ class DeleteHelper(
     }
 
     fun begin(uris: List<Uri>, bin: Boolean) {
-        pending = uris
+        if (busy || uris.isEmpty()) return
+        busy = true
+        pending = uris.distinct()
         queue = emptyList()
         toBin = bin
         rounds = 0
         denied = false
         stage = 0
-        attempt(uris)
+        verifyTries = 0
+        progress?.dismiss()
+        progress = null
+        if (!quiet) {
+            progress = try {
+                MoveProgress(ctx(), if (bin) "Moving to Recycle Bin…" else "Deleting…").also { it.show() }
+            } catch (e: Exception) { null }
+        }
+        attempt(pending)
+    }
+
+    private fun updateProgress() {
+        val p = progress ?: return
+        try {
+            val c = ctx()
+            val gone = pending.count { !Deleter.exists(c, it) }
+            p.set((gone * 95 / pending.size.coerceAtLeast(1)))
+        } catch (e: Exception) { }
     }
 
     private fun attempt(list: List<Uri>) {
+        updateProgress()
         var rest = list
         while (rest.isNotEmpty()) {
             val part = rest.take(chunk)
@@ -87,6 +114,7 @@ class DeleteHelper(
             finish()
             return
         }
+        updateProgress()
         if (stage == 1) Deleter.trashNow(ctx(), pending)
         if (Build.VERSION.SDK_INT < 30 && ++rounds <= pending.size) {
             val c = ctx()
@@ -103,8 +131,24 @@ class DeleteHelper(
     }
 
     private fun finish() {
-        val c = ctx()
+        verifyTries = 0
+        verify()
+    }
+
+    /** MediaStore update hote deri hote pare, tai failure bolar age kichukkhon re-check kori */
+    private fun verify() {
+        val c = try { ctx() } catch (e: Exception) { busy = false; progress?.dismiss(); progress = null; return }
         val left = pending.filter { Deleter.exists(c, it) }
+        if (left.isNotEmpty() && !denied && verifyTries < 4) {
+            verifyTries++
+            updateProgress()
+            hd.postDelayed({ verify() }, 350)
+            return
+        }
+        conclude(c, left)
+    }
+
+    private fun conclude(c: Context, left: List<Uri>) {
         if (toBin && stage == 0 && !denied && left.isNotEmpty() && Build.VERSION.SDK_INT >= 30) {
             Log.w(tag, "trash request left ${left.size} items, retrying with write request")
             stage = 1
@@ -122,7 +166,14 @@ class DeleteHelper(
             else -> "${left.size} of ${pending.size} item(s) couldn't be $verb"
         }
         Log.i(tag, "finish: removed=${removed.size} left=${left.size} denied=$denied stage=$stage")
-        if (!quiet) Toast.makeText(c, msg, Toast.LENGTH_SHORT).show()
+        val p = progress
+        progress = null
+        if (left.isEmpty() && p != null) p.success(msg)
+        else {
+            p?.dismiss()
+            if (!quiet) Toast.makeText(c, msg, Toast.LENGTH_SHORT).show()
+        }
+        busy = false
         onDone(removed, left.size)
     }
 }

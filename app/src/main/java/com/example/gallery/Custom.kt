@@ -88,3 +88,20 @@ object OriginalStore {
         Prefs.putStr(KEY, load().put(edited.toString(), original.toString()).toString())
     }
 }
+
+
+/** Device album er display name override. Original folder/file kokhono rename hoy na. */
+object AlbumNames {
+    private const val KEY = "albumNames"
+    private fun load(): JSONObject = try { JSONObject(Prefs.getStr(KEY, "{}")) } catch (e: Exception) { JSONObject() }
+
+    fun get(id: Long): String? {
+        val s = load().optString(id.toString(), "")
+        return if (s.isEmpty()) null else s
+    }
+
+    fun put(id: Long, name: String) {
+        Prefs.putStr(KEY, load().put(id.toString(), name).toString())
+        Changes.dirty = true
+    }
+}

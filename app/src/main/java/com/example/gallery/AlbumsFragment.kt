@@ -153,11 +153,15 @@ class AlbumsFragment : Fragment(R.layout.fragment_albums) {
     }
 
     private fun renameSel() {
-        val id = adapter.selected.singleOrNull()
-        if (id == null || !isCustomId(id)) { toast("Select one album you created to rename"); return }
+        val sel = adapter.selected.toList()
+        if (sel.isEmpty()) { toast("Select an album first"); return }
+        if (sel.size > 1) { toast("Only one album can be renamed at a time"); return }
+        val id = sel[0]
         val old = current.firstOrNull { it.id == id }?.name ?: ""
         askName(requireContext(), "Rename album", old) { n ->
-            CustomAlbums.rename(id, n); exitEdit(); vm.publish()
+            if (isCustomId(id)) CustomAlbums.rename(id, n) else AlbumNames.put(id, n)
+            exitEdit()
+            vm.publish()
         }
     }
 

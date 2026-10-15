@@ -84,7 +84,7 @@ class MainActivity : AppCompatActivity() {
         navItems = listOf<View>(tabs[0], tabs[1], tabs[2], findViewById<View>(R.id.btnMenu))
         findViewById<SelectionBar>(R.id.selBar).apply {
             alpha = 0f
-            peers = listOf<View>(findViewById(R.id.navRow), navPill)
+            peers = listOf<View>(this@MainActivity.findViewById(R.id.navRow), navPill)
             growParent = true
         }
         tabs.forEachIndexed { i, t -> t.useDisplay(); t.setOnClickListener { select(i, true) } }

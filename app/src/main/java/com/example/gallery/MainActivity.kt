@@ -82,6 +82,11 @@ class MainActivity : AppCompatActivity() {
         tabs = listOf(R.id.tabPictures, R.id.tabAlbums, R.id.tabStories).map { findViewById<TextView>(it) }
         navPill = findViewById(R.id.navPill)
         navItems = listOf<View>(tabs[0], tabs[1], tabs[2], findViewById<View>(R.id.btnMenu))
+        findViewById<SelectionBar>(R.id.selBar).apply {
+            alpha = 0f
+            peers = listOf<View>(findViewById(R.id.navRow), navPill)
+            growParent = true
+        }
         tabs.forEachIndexed { i, t -> t.useDisplay(); t.setOnClickListener { select(i, true) } }
         findViewById<View>(R.id.btnMenu).setOnClickListener { showMenuSheet() }
 

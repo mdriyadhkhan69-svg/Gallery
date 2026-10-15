@@ -2,6 +2,7 @@ package com.example.gallery
 
 import android.animation.ValueAnimator
 import android.app.Activity
+import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
@@ -55,6 +56,7 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
     private lateinit var pullSub: TextView
     private var pullSubText = ""
     private var pullHdr: PullHeader? = null
+    private var selBar: SelectionBar? = null
 
     // zoom state
     private var zoomAnim: ValueAnimator? = null
@@ -128,6 +130,12 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         empty = v.findViewById(R.id.empty); empty.useDisplay()
         grid = v.findViewById(R.id.grid)
         val input = v.findViewById<EditText>(R.id.searchInput)
+        selBar = requireActivity().findViewById<SelectionBar>(R.id.selBar)?.also { b ->
+            b.onCreate = { showCreate() }
+            b.onShare = { shareSel() }
+            b.onDelete = { confirmDelete() }
+            b.onMore = { a -> showMore(a) }
+        }
 
         search = SearchController(input, listOf<View>(v.findViewById(R.id.titleBox), btnDup, btnMore), btnSearch) { query = it; rebuild() }
 
@@ -215,6 +223,11 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         previewer?.release()
         previewer = null
         pullHdr = null
+        selBar?.let { b ->
+            b.setActive(false, false)
+            b.onCreate = null; b.onShare = null; b.onDelete = null; b.onMore = null
+        }
+        selBar = null
         endDrag()
         super.onDestroyView()
     }
@@ -575,6 +588,10 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         btnDup.setColorFilter(if (dupMode) Colors.BLUE else Color.WHITE)
         backCb.isEnabled = sel || search.active
         previewer?.setBlocked(sel)
+        val cap = sel && mode != "pick"
+        if (cap) { btnSearch.visibility = View.GONE; btnMore.visibility = View.GONE }
+        else { btnSearch.visibility = View.VISIBLE; if (!search.active) btnMore.visibility = View.VISIBLE }
+        selBar?.setActive(cap, true)
         sub.text = subText
         sub.visibility = if (!sel && mode != "all" && subText.isNotEmpty()) View.VISIBLE else View.GONE
         pullTitle.text = if (mode == "all") "Pictures" else barTitleState
@@ -646,6 +663,73 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         val uris = selectedUris()
         if (uris.isEmpty()) { toast("Select photos first"); return }
         deleter.confirmAndDelete(uris)
+    }
+
+    // ---------- Selection capsule actions ----------
+    private fun showCreate() {
+        if (adapter.selected.isEmpty()) { toast("Select photos first"); return }
+        Creator.showSheet(requireActivity()) { kind ->
+            val sel = items.filter { it.id in adapter.selected }
+            Creator.create(requireContext(), kind, sel) { ok -> if (ok && isAdded) exitSelection() }
+        }
+    }
+
+    private fun shareSel() {
+        val u = selectedUris()
+        if (u.isEmpty()) toast("Select photos first") else Share.send(requireContext(), u)
+    }
+
+    private fun showMore(anchor: View) {
+        if (mode == "all") {
+            val labels = listOf(
+                "Copy to album", "Move to album", "Select all", "Add to shared album",
+                "Add tag", "Edit date and time", "Edit location", "Set as wallpaper"
+            )
+            Creator.showMenu(anchor, labels, 7) { i ->
+                when (i) {
+                    0 -> addToCollection(CustomAlbums, "album")
+                    1 -> moveToAlbum()
+                    2 -> selectAll()
+                    7 -> wallpaper()
+                    else -> toast("${labels[i]} isn't available yet")
+                }
+            }
+        } else {
+            val acts = ArrayList<Pair<String, () -> Unit>>()
+            acts.add(act("Select all") { selectAll() })
+            acts.add(act("Add to album") { addToCollection(CustomAlbums, "album") })
+            acts.add(act("Add to story") { addToCollection(CustomStories, "story") })
+            if (isColl) acts.add(act("Remove from here") { removeFromHere() })
+            if (mode == "ustory") acts.add(act("Set as cover") { setCover() })
+            Creator.showMenu(anchor, acts.map { it.first }, -1) { i -> acts[i].second() }
+        }
+    }
+
+    private fun moveToAlbum() {
+        val ids = adapter.selected.toList()
+        if (ids.isEmpty()) { toast("Select photos first"); return }
+        val list = CustomAlbums.all()
+        val names = (listOf("+ New album") + list.map { it.name }).toTypedArray()
+        MaterialAlertDialogBuilder(requireContext()).setTitle("Move to album")
+            .setItems(names) { _, w ->
+                val finish = {
+                    Prefs.setSet("albumGone", Prefs.getSet("albumGone") + ids.map { it.toString() })
+                    toast("Moved ${ids.size} item(s)")
+                    exitSelection()
+                    vm.publish()
+                }
+                if (w == 0) askName(requireContext(), "New album", "") { n -> CustomAlbums.create(n, ids); finish() }
+                else { CustomAlbums.add(list[w - 1].id, ids); finish() }
+            }.show()
+    }
+
+    private fun wallpaper() {
+        val m = items.filter { it.id in adapter.selected }
+        if (m.size != 1 || m[0].video) { toast("Select one photo"); return }
+        val i = Intent(Intent.ACTION_ATTACH_DATA).setDataAndType(m[0].uri, "image/*")
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        try { startActivity(Intent.createChooser(i, "Set as")) }
+        catch (e: Exception) { toast("No app found") }
     }
 
     // ---------- Dialogs ----------

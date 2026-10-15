@@ -86,7 +86,8 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.btnMenu).setOnClickListener { showMenuSheet() }
 
         select(Prefs.tab.coerceIn(0, 2), false)   // last tab restore (persistent)
-        if (savedInstanceState == null && (!hasAccess() || needsVideo())) permLauncher.launch(permissions())
+        if (savedInstanceState == null && (!hasAccess() || needsVideo() ||
+                    (Build.VERSION.SDK_INT >= 29 && !granted(Manifest.permission.ACCESS_MEDIA_LOCATION)))) permLauncher.launch(permissions())
         checkAccess()
         findViewById<View>(R.id.container).post { ensureTabs() }
     }
@@ -354,10 +355,15 @@ class MainActivity : AppCompatActivity() {
         Build.VERSION.SDK_INT >= 34 -> arrayOf(
             Manifest.permission.READ_MEDIA_IMAGES,
             Manifest.permission.READ_MEDIA_VIDEO,
-            Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+            Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+            Manifest.permission.ACCESS_MEDIA_LOCATION
         )
-        Build.VERSION.SDK_INT >= 33 -> arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
-        Build.VERSION.SDK_INT >= 29 -> arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        Build.VERSION.SDK_INT >= 33 -> arrayOf(
+            Manifest.permission.READ_MEDIA_IMAGES,
+            Manifest.permission.READ_MEDIA_VIDEO,
+            Manifest.permission.ACCESS_MEDIA_LOCATION
+        )
+        Build.VERSION.SDK_INT >= 29 -> arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.ACCESS_MEDIA_LOCATION)
         else -> arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
     }
 

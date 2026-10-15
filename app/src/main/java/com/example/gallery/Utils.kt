@@ -8,6 +8,7 @@ import android.content.IntentSender
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.provider.MediaStore
 import android.view.View
 import android.widget.TextView
@@ -88,7 +89,15 @@ object Deleter {
 
     /** Active (non-trashed) item ache kina. Error hole conservative: ache dhora hoy. */
     fun exists(ctx: Context, u: Uri): Boolean = try {
-        ctx.contentResolver.query(u, arrayOf(MediaStore.MediaColumns._ID), null, null, null)?.use { it.moveToFirst() } ?: false
+        val clean = u.buildUpon().clearQuery().build()
+        if (Build.VERSION.SDK_INT >= 30) {
+            val args = Bundle().apply { putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_INCLUDE) }
+            ctx.contentResolver.query(clean, arrayOf(MediaStore.MediaColumns.IS_TRASHED), args, null)?.use { c ->
+                c.moveToFirst() && c.getInt(0) == 0
+            } ?: false
+        } else {
+            ctx.contentResolver.query(clean, arrayOf(MediaStore.MediaColumns._ID), null, null, null)?.use { it.moveToFirst() } ?: false
+        }
     } catch (e: Exception) {
         android.util.Log.w(TAG, "exists() failed: ${e.javaClass.simpleName}: ${e.message}")
         true

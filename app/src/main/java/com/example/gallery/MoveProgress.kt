@@ -51,6 +51,7 @@ class MoveProgress(private val ctx: Context, label: String) {
         bar.progress = 0
         bar.progressTintList = ColorStateList.valueOf(Colors.BLUE)
         bar.progressBackgroundTintList = ColorStateList.valueOf(0xFF3A3A3A.toInt())
+        bar.indeterminateTintList = ColorStateList.valueOf(Colors.BLUE)
         card.addView(bar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (8 * d).toInt()).apply { topMargin = (14 * d).toInt() })
         dlg.setContentView(card)
         dlg.window?.apply {
@@ -63,8 +64,18 @@ class MoveProgress(private val ctx: Context, label: String) {
 
     fun show() { try { dlg.show() } catch (e: Exception) { } }
 
+    fun waiting() {
+        bar.isIndeterminate = true
+        pct.text = ""
+    }
+
     fun set(p: Int) {
         val t = p.coerceIn(0, 100)
+        if (bar.isIndeterminate) {
+            bar.isIndeterminate = false
+            bar.progress = value
+            pct.text = "$value%"
+        }
         if (t <= value) return
         value = t
         pct.text = "$t%"

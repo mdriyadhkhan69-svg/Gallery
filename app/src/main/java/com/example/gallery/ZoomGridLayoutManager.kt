@@ -59,7 +59,7 @@ class ZoomGridLayoutManager(
     private fun asp(r: Row): Float {
         val m = (r as Row.Photo).m
         val a = if (m.w > 0 && m.h > 0) m.w.toFloat() / m.h else 1f
-        return a.coerceIn(0.7f, 1.6f)
+        return a.coerceIn(0.5f, 1.6f)
     }
 
     private fun put(o: FloatArray, i: Int, x: Float, y: Float, w: Float, h: Float) {
@@ -95,13 +95,19 @@ class ZoomGridLayoutManager(
 
     private fun justified(l: List<Row>, o: FloatArray, s: Int, e: Int, px: Float, y0: Float, gw: Float): Float {
         var y = y0
-        val target = gw / 3f
+        val pattern = intArrayOf(3, 2, 3, 3, 2, 3, 2, 2)
+        val target = gw / 2.2f
         var a = s
+        var r = 0
         while (a < e) {
-            val b = minOf(a + 3, e)
+            val want = pattern[r % pattern.size]
+            r++
+            val b = minOf(a + want, e)
             var sum = 0f
             for (k in a until b) sum += asp(l[k])
-            val h = minOf(gw / sum, target * 1.6f).let { if (b - a == 3) gw / sum else minOf(it, target) }
+            var h = gw / sum
+            if (b - a < want) h = minOf(h, target)
+            h = minOf(h, gw * 1.1f)
             var x = px
             for (k in a until b) {
                 val w = asp(l[k]) * h

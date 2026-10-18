@@ -94,7 +94,12 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         }
         vm.load()
     }
-
+    private val pickLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        if (r.resultCode == Activity.RESULT_OK && isAdded && ::adapter.isInitialized) {
+            exitSelection()
+            vm.publish()
+        }
+    }
     private val backCb = object : OnBackPressedCallback(false) {
         override fun handleOnBackPressed() {
             when {
@@ -687,8 +692,8 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
             )
             Creator.showMenu(anchor, labels, 7) { i ->
                 when (i) {
-                    0 -> addToCollection(CustomAlbums, "album")
-                    1 -> moveToAlbum()
+                    0 -> openPicker(false)
+                    1 -> openPicker(true)
                     2 -> selectAll()
                     7 -> wallpaper()
                     else -> toast("${labels[i]} isn't available yet")
@@ -697,14 +702,19 @@ class PicturesFragment : Fragment(R.layout.fragment_pictures) {
         } else {
             val acts = ArrayList<Pair<String, () -> Unit>>()
             acts.add(act("Select all") { selectAll() })
-            acts.add(act("Add to album") { addToCollection(CustomAlbums, "album") })
+            acts.add(act("Copy to album") { openPicker(false) })
+            acts.add(act("Move to album") { openPicker(true) })
             acts.add(act("Add to story") { addToCollection(CustomStories, "story") })
             if (isColl) acts.add(act("Remove from here") { removeFromHere() })
             if (mode == "ustory") acts.add(act("Set as cover") { setCover() })
             Creator.showMenu(anchor, acts.map { it.first }, -1) { i -> acts[i].second() }
         }
     }
-
+    private fun openPicker(move: Boolean) {
+        val ids = items.filter { it.id in adapter.selected }.map { it.id }.toLongArray()
+        if (ids.isEmpty()) { toast("Select photos first"); return }
+        pickLauncher.launch(AlbumPickerActivity.intent(requireContext(), ids, move, mode, param))
+    }
     private fun moveToAlbum() {
         val ids = adapter.selected.toList()
         if (ids.isEmpty()) { toast("Select photos first"); return }

@@ -74,8 +74,8 @@
     <LinearLayout
         android:id="@+id/actionBar"
         android:layout_width="match_parent"
-        android:layout_height="64dp"
-        android:background="@color/surface"
+        android:layout_height="56dp"
+        android:background="@color/bg"
         android:gravity="center"
         android:orientation="horizontal"
         android:visibility="gone">
@@ -83,28 +83,38 @@
         <TextView
             android:id="@+id/btnRestore"
             android:layout_width="wrap_content"
-            android:layout_height="44dp"
+            android:layout_height="48dp"
             android:background="@drawable/bg_capsule_ripple"
+            android:drawableTop="@drawable/ic_bar_restore"
+            android:drawablePadding="1dp"
             android:gravity="center"
-            android:minWidth="120dp"
-            android:paddingStart="24dp"
-            android:paddingEnd="24dp"
+            android:includeFontPadding="false"
+            android:minWidth="150dp"
+            android:paddingStart="28dp"
+            android:paddingTop="5dp"
+            android:paddingEnd="28dp"
+            android:paddingBottom="5dp"
             android:text="Restore"
             android:textColor="@color/white"
-            android:textSize="14sp" />
+            android:textSize="13sp" />
 
         <TextView
             android:id="@+id/btnDelete"
             android:layout_width="wrap_content"
-            android:layout_height="44dp"
-            android:layout_marginStart="24dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="16dp"
             android:background="@drawable/bg_capsule_ripple"
+            android:drawableTop="@drawable/ic_bar_trash"
+            android:drawablePadding="1dp"
             android:gravity="center"
-            android:minWidth="120dp"
-            android:paddingStart="24dp"
-            android:paddingEnd="24dp"
+            android:includeFontPadding="false"
+            android:minWidth="150dp"
+            android:paddingStart="28dp"
+            android:paddingTop="5dp"
+            android:paddingEnd="28dp"
+            android:paddingBottom="5dp"
             android:text="Delete"
             android:textColor="@color/white"
-            android:textSize="14sp" />
+            android:textSize="13sp" />
     </LinearLayout>
 </LinearLayout>

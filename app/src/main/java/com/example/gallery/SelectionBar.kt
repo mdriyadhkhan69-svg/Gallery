@@ -7,6 +7,7 @@ import android.util.AttributeSet
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
+import android.widget.ImageView
 import android.widget.TextView
 
 class SelectionBar @JvmOverloads constructor(c: Context, a: AttributeSet? = null) : LinearLayout(c, a) {
@@ -36,21 +37,30 @@ class SelectionBar @JvmOverloads constructor(c: Context, a: AttributeSet? = null
     }
 
     private fun addAction(label: String, icon: Int, click: (View) -> Unit) {
-        addView(TextView(context).apply {
-            text = label
-            textSize = 11f
-            setTextColor(Color.WHITE)
-            useDisplay()
+        val cell = LinearLayout(context).apply {
+            orientation = VERTICAL
             gravity = Gravity.CENTER
-            setSingleLine()
-            compoundDrawablePadding = (2 * d).toInt()
-            setCompoundDrawablesWithIntrinsicBounds(0, icon, 0, 0)
             contentDescription = label
             setBackgroundResource(R.drawable.bg_capsule_ripple)
             isClickable = true
             isFocusable = true
             setOnClickListener { click(it) }
-        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f))
+        }
+        cell.addView(ImageView(context).apply {
+            setImageResource(icon)
+            layoutParams = LinearLayout.LayoutParams((22 * d).toInt(), (22 * d).toInt())
+        })
+        cell.addView(TextView(context).apply {
+            text = label
+            textSize = 11f
+            setTextColor(Color.WHITE)
+            useDisplay()
+            includeFontPadding = false
+            gravity = Gravity.CENTER
+            setSingleLine()
+            setPadding(0, (2 * d).toInt(), 0, 0)
+        })
+        addView(cell, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f))
     }
 
     fun setActive(on: Boolean, animate: Boolean = true) {
@@ -77,7 +87,7 @@ class SelectionBar @JvmOverloads constructor(c: Context, a: AttributeSet? = null
         if (growParent) {
             val lp = cap.layoutParams
             if (baseH == 0) baseH = lp.height
-            val to = if (on) (64f * d).toInt() else baseH
+            val to = if (on) (56f * d).toInt() else baseH
             hAnim?.cancel()
             if (lp.height != to) {
                 hAnim = ValueAnimator.ofInt(lp.height, to).apply {

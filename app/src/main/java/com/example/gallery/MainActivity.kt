@@ -395,7 +395,7 @@ class MainActivity : AppCompatActivity() {
         val dp = resources.displayMetrics.density
         val grid = GridLayout(this).apply {
             columnCount = 4
-            setPadding((12 * dp).toInt(), (24 * dp).toInt(), (12 * dp).toInt(), (32 * dp).toInt())
+            setPadding((12 * dp).toInt(), (14 * dp).toInt(), (12 * dp).toInt(), (32 * dp).toInt())
         }
         val entries = listOf(
             Entry(R.drawable.ic_favorite_border, "Favourites") { startActivity(GridActivity.intent(this, "fav", "", "Favourites")) },
@@ -407,21 +407,31 @@ class MainActivity : AppCompatActivity() {
                     .setMessage("Your photos, straight from device storage.").setPositiveButton("OK", null).show()
             }
         )
-        entries.forEach { e ->
+        entries.forEachIndexed { idx, e ->
             val cell = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_HORIZONTAL
-                setPadding(0, (12 * dp).toInt(), 0, (12 * dp).toInt())
+                setPadding(0, (8 * dp).toInt(), 0, ((if (idx < 4) 16 else 8) * dp).toInt())
                 layoutParams = GridLayout.LayoutParams(GridLayout.spec(GridLayout.UNDEFINED), GridLayout.spec(GridLayout.UNDEFINED, 1f)).apply { width = 0 }
                 addView(ImageView(context).apply {
                     setImageResource(e.icon); setColorFilter(Color.WHITE)
                     contentDescription = e.label
-                    layoutParams = LinearLayout.LayoutParams((28 * dp).toInt(), (28 * dp).toInt())
+                    val iconSize = when (e.label) {
+                        "Favourites" -> 22f
+                        "Videos" -> 26f
+                        "Recycle Bin" -> 26f
+                        else -> 24f
+                    }
+                    val vm = ((34f - iconSize) / 2f * dp).toInt()
+                    layoutParams = LinearLayout.LayoutParams((iconSize * dp).toInt(), (iconSize * dp).toInt()).apply {
+                        topMargin = vm
+                        bottomMargin = vm
+                    }
                 })
                 addView(TextView(context).apply {
                     text = e.label; setTextColor(Color.WHITE); textSize = 12f
                     gravity = Gravity.CENTER; useDisplay()
-                    setPadding(0, (8 * dp).toInt(), 0, 0)
+                    setPadding(0, (3 * dp).toInt(), 0, 0)
                 })
                 setBackgroundResource(R.drawable.bg_menu_item)
                 isClickable = true
@@ -458,7 +468,7 @@ class MainActivity : AppCompatActivity() {
         wrap.addView(grid)
         d.setContentView(wrap)
         (wrap.parent as View).apply {
-            setBackgroundResource(R.drawable.bg_menu_sheet)
+            setBackgroundResource(R.drawable.bg_create_sheet)
             backgroundTintList = null
         }
         movePill(3, true)

@@ -17,6 +17,7 @@ import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
+import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -106,13 +107,20 @@ object Creator {
     // ---------- More popup (capsule er upore ashe) ----------
     fun showMenu(anchor: View, labels: List<String>, dividerBefore: Int, onPick: (Int) -> Unit) {
         val ctx = anchor.context
-        val d = ctx.resources.displayMetrics.density
+        val dm = ctx.resources.displayMetrics
+        val d = dm.density
         fun px(v: Int) = (v * d).toInt()
         val pw = PopupWindow(ctx)
         val box = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(0, px(8), 0, px(8))
+            setPadding(0, px(6), 0, px(6))
         }
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = Fonts.display(ctx)
+            textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 16f, dm)
+        }
+        val textW = labels.maxOf { paint.measureText(it) }
+        val panelW = (textW + px(40)).toInt().coerceIn(px(130), dm.widthPixels - px(24))
         labels.forEachIndexed { i, label ->
             if (i == dividerBefore) {
                 box.addView(View(ctx).apply {
@@ -122,7 +130,7 @@ object Creator {
                         setStroke(px(1), 0x66FFFFFF, px(2).toFloat(), px(3).toFloat())
                     }
                 }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(2)).apply {
-                    setMargins(px(20), px(6), px(20), px(6))
+                    setMargins(px(16), px(4), px(16), px(4))
                 })
             }
             box.addView(TextView(ctx).apply {
@@ -130,8 +138,9 @@ object Creator {
                 textSize = 16f
                 setTextColor(Color.WHITE)
                 useDisplay()
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(px(24), 0, px(24), 0)
+                gravity = Gravity.CENTER
+                setSingleLine()
+                setPadding(px(20), 0, px(20), 0)
                 setBackgroundResource(R.drawable.bg_menu_item)
                 isClickable = true
                 isFocusable = true
@@ -143,12 +152,14 @@ object Creator {
             addView(box)
         }
         val wrap = FrameLayout(ctx).apply {
-            background = GradientDrawable().apply { setColor(0xFF262626.toInt()); cornerRadius = 26 * d }
-            roundCorners(26f)
+            background = GradientDrawable().apply { setColor(0xFF262626.toInt()); cornerRadius = 22 * d }
+            roundCorners(22f)
             elevation = 10 * d
+            alpha = 0f
+            scaleX = 0.9f
+            scaleY = 0.9f
             addView(scroll)
         }
-        val panelW = min(px(250), ctx.resources.displayMetrics.widthPixels - px(24))
         box.measure(
             View.MeasureSpec.makeMeasureSpec(panelW, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
@@ -157,6 +168,8 @@ object Creator {
         anchor.getLocationOnScreen(loc)
         val avail = loc[1] - px(32)
         val h = min(box.measuredHeight, avail).coerceAtLeast(px(96))
+        var left = dm.widthPixels - panelW - px(8)
+        left = left.coerceIn(px(12), maxOf(px(12), dm.widthPixels - panelW - px(12)))
         pw.contentView = wrap
         pw.width = panelW
         pw.height = h
@@ -164,7 +177,12 @@ object Creator {
         pw.isOutsideTouchable = true
         pw.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         pw.animationStyle = android.R.style.Animation_Dialog
-        pw.showAsDropDown(anchor, -(panelW - anchor.width) - px(8), -(h + anchor.height + px(8)))
+        pw.showAsDropDown(anchor, left - loc[0], -(h + anchor.height + px(8)))
+        wrap.post {
+            wrap.pivotX = wrap.width.toFloat()
+            wrap.pivotY = wrap.height.toFloat()
+            wrap.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(150).start()
+        }
     }
 
     // ---------- Create actions ----------
